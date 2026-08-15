@@ -1,11 +1,15 @@
 mod discovery;
 mod transport;
 
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, OnceLock},
+    time::Duration,
+};
 
 use tauri::{AppHandle, Emitter};
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    sync::Semaphore,
     time::sleep,
 };
 use tracing::{info, warn};
@@ -58,8 +62,21 @@ pub async fn run(app: AppHandle, state: Arc<RuntimeState>) {
 }
 
 fn emit_pet_intent(app: &AppHandle, intent: PetIntent) {
+    // A burst of transitions must not enqueue an unbounded number of
+    // main-thread callbacks. The scheduler is stateful, so retaining one
+    // callback at a time is sufficient; the Herdr reader remains responsive.
+    static DISPATCH_PERMIT: OnceLock<Arc<Semaphore>> = OnceLock::new();
+    let permit = DISPATCH_PERMIT
+        .get_or_init(|| Arc::new(Semaphore::new(1)))
+        .clone()
+        .try_acquire_owned()
+        .ok();
+    let Some(permit) = permit else {
+        return;
+    };
     let app = app.clone();
     let _ = app.clone().run_on_main_thread(move || {
+        let _permit = permit;
         let _ = app.emit("pet://intent", intent);
     });
 }

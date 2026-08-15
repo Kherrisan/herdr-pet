@@ -12,6 +12,7 @@ use tracing::{info, warn};
 
 use crate::{
     agents::AgentInfo,
+    pet::PetIntent,
     protocol,
     runtime::{ConnectionState, RuntimeState},
 };
@@ -54,6 +55,13 @@ pub async fn run(app: AppHandle, state: Arc<RuntimeState>) {
             }
         }
     }
+}
+
+fn emit_pet_intent(app: &AppHandle, intent: PetIntent) {
+    let app = app.clone();
+    let _ = app.clone().run_on_main_thread(move || {
+        let _ = app.emit("pet://intent", intent);
+    });
 }
 
 async fn connect_and_subscribe(
@@ -106,7 +114,7 @@ async fn connect_and_subscribe(
     if !config.herdr.observation.quiet()
         && let Some(reconnect_intent) = state.intents.write().await.reconnected(&config)
     {
-        let _ = app.emit("pet://intent", reconnect_intent);
+        emit_pet_intent(app, reconnect_intent);
     }
     state.emit_runtime(app).await;
 
@@ -199,7 +207,7 @@ async fn connect_and_subscribe(
                         .await
                         .create_from_transition(transition, &agent, &config)
                     {
-                        let _ = app.emit("pet://intent", intent);
+                        emit_pet_intent(app, intent);
                     }
                 }
                 state.queue_runtime_emit();
@@ -216,7 +224,7 @@ async fn connect_and_subscribe(
                         && let Some(intent) =
                             state.intents.write().await.agent_exited(&agent, &config)
                     {
-                        let _ = app.emit("pet://intent", intent);
+                        emit_pet_intent(app, intent);
                     }
                 }
                 state.emit_runtime(app).await;
@@ -232,7 +240,7 @@ async fn connect_and_subscribe(
                         .await
                         .agent_detected(&data.pane_id, &config)
                 {
-                    let _ = app.emit("pet://intent", intent);
+                    emit_pet_intent(app, intent);
                 }
                 return Ok(());
             }

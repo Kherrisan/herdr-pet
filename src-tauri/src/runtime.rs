@@ -121,12 +121,13 @@ impl RuntimeState {
             let mut connection = self.connection.write().await;
             connection.agent_count = agents.len();
         }
-        let _ = app.emit("herdr://agents-changed", &agents);
-        let _ = app.emit("pet://aggregate-state", aggregate);
-        let _ = app.emit(
-            "herdr://connection-changed",
-            self.connection.read().await.clone(),
-        );
+        let connection = self.connection.read().await.clone();
+        let app = app.clone();
+        let _ = app.clone().run_on_main_thread(move || {
+            let _ = app.emit("herdr://agents-changed", &agents);
+            let _ = app.emit("pet://aggregate-state", aggregate);
+            let _ = app.emit("herdr://connection-changed", connection);
+        });
     }
 
     pub fn queue_runtime_emit(&self) {

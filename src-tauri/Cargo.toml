@@ -1,6 +1,6 @@
 [package]
 name = "herdr-pet"
-version = "0.4.0-beta.0"
+version = "0.4.0-beta.1"
 description = "A desktop companion for Herdr agents"
 authors = ["Herdr Pet contributors"]
 edition = "2024"

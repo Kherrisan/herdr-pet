@@ -50,7 +50,7 @@ jobs:
         run: npm run stress:linux -- --build
       - name: Verify the official runtime in WebKitGTK
         if: runner.os == 'Linux'
-        run: npm run runtime:self-test:linux
+        run: npm run runtime:self-test:linux -- --build
       - name: Verify pure Wayland runtime and capability degradation
         if: runner.os == 'Linux'
         run: npm run runtime:self-test:wayland

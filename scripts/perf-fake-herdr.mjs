@@ -1,5 +1,6 @@
 import { createServer } from "node:net";
 import { unlink } from "node:fs/promises";
+import { once } from "node:events";
 
 const socketPath = process.argv[2];
 const scenario = process.argv[3] ?? "sleeping";
@@ -31,26 +32,31 @@ const stressEvent = (index, status) => JSON.stringify({
   },
 });
 
-const runStressScenario = (socket) => {
+const delay = (durationMs) => new Promise((resolve) => setTimeout(resolve, durationMs));
+
+const writeStressEvent = async (socket, index, status) => {
+  if (!socket.write(`${stressEvent(index, status)}\n`)) await once(socket, "drain");
+};
+
+const runStressScenario = async (socket) => {
   if (stressStarted) return;
   stressStarted = true;
+  await delay(200);
   for (let cycle = 0; cycle < 10; cycle += 1) {
-    setTimeout(() => {
-      if (socket.destroyed) return;
-      for (let index = 0; index < 10; index += 1) socket.write(`${stressEvent(index, "working")}\n`);
-    }, 200 + cycle * 70);
-    setTimeout(() => {
-      if (socket.destroyed) return;
-      for (let index = 0; index < 10; index += 1) socket.write(`${stressEvent(index, "done")}\n`);
-    }, 225 + cycle * 70);
+    if (socket.destroyed) return;
+    for (let index = 0; index < 10; index += 1) {
+      await writeStressEvent(socket, index, "working");
+    }
+    await delay(25);
+    if (cycle === 4) await writeStressEvent(socket, 0, "blocked");
+    for (let index = 0; index < 10; index += 1) {
+      await writeStressEvent(socket, index, "done");
+    }
+    await delay(45);
   }
-  setTimeout(() => {
-    if (!socket.destroyed) socket.write(`${stressEvent(0, "blocked")}\n`);
-  }, 480);
-  setTimeout(() => {
-    stressDisconnected = true;
-    socket.end();
-  }, 1_050);
+  await delay(100);
+  stressDisconnected = true;
+  socket.end();
 };
 
 const server = createServer((socket) => {
@@ -98,7 +104,7 @@ const server = createServer((socket) => {
           }
         }, 1_000);
       } else if (scenario === "stress") {
-        runStressScenario(socket);
+        void runStressScenario(socket).catch(() => socket.destroy());
       }
     } else {
       socket.end(`${JSON.stringify({ id: request.id, error: { code: "unknown_method", message: "unknown method" } })}\n`);

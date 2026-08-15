@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev xvfb xauth x11-utils openbox weston
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:bundle-size
+      - run: npm run check:metadata
+      - run: npm run check:visual-baseline
+      - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - name: Build native WebView runtime self-test
+        if: runner.os != 'Linux'
+        run: npm run tauri build -- --no-bundle
+      - name: Verify the official runtime in WebView2 or WKWebView
+        if: runner.os != 'Linux'
+        run: npm run runtime:self-test:native
+      - name: Run 10-Agent desktop stress smoke
+        if: runner.os == 'Linux'
+        run: npm run stress:linux -- --build
+      - name: Verify the official runtime in WebKitGTK
+        if: runner.os == 'Linux'
+        run: npm run runtime:self-test:linux
+      - name: Verify pure Wayland runtime and capability degradation
+        if: runner.os == 'Linux'
+        run: npm run runtime:self-test:wayland
+
+  avatar-runtime:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: third-party/avatar-lab
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check

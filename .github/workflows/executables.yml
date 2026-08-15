@@ -1,0 +1,62 @@
+name: Build executables
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target_args: ""
+            artifact_name: herdr-pet-linux-x86_64
+            executable_path: src-tauri/target/release/herdr-pet
+          - os: windows-latest
+            target_args: ""
+            artifact_name: herdr-pet-windows-x86_64
+            executable_path: src-tauri/target/release/herdr-pet.exe
+          - os: macos-latest
+            target_args: "--target aarch64-apple-darwin"
+            artifact_name: herdr-pet-macos-aarch64
+            executable_path: src-tauri/target/aarch64-apple-darwin/release/herdr-pet
+          - os: macos-latest
+            target_args: "--target x86_64-apple-darwin"
+            artifact_name: herdr-pet-macos-x86_64
+            executable_path: src-tauri/target/x86_64-apple-darwin/release/herdr-pet
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libdbus-1-dev
+      - run: npm ci
+      - run: npm test
+      - run: npm run check:metadata
+      - run: npm run check:visual-baseline
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
+      - name: Build executable without an installer
+        run: npm run tauri build -- --no-bundle ${{ matrix.target_args }}
+      - name: Verify executable exists
+        shell: bash
+        run: test -f "${{ matrix.executable_path }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.executable_path }}
+          if-no-files-found: error
+          retention-days: 14

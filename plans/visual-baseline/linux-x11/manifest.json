@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-08-15",
+  "environment": "Linux X11 / Xvfb / Openbox / WebKitGTK software rendering",
+  "files": {
+    "sleeping.png": { "width": 320, "height": 320, "colors": 567, "sha256": "b42976a56f37a9a73addefca0f2c4034e829ca25e341f3cdbd63eb4bdfe8f2b4" },
+    "idle.png": { "width": 320, "height": 320, "colors": 577, "sha256": "48f649ce132b793dd7ed250ea149434e84d791f9c2c1b162c743fb9380d2fc5c" },
+    "working.png": { "width": 320, "height": 320, "colors": 564, "sha256": "f409bd53f4e1915b7c17c2ba2feb55e89d4dece215e46afe7a1df83cbdb4a844" },
+    "needs-attention.png": { "width": 320, "height": 320, "colors": 597, "sha256": "09c32ef368d085c37822923ceafb5ee427825fa9c5b031e160118aa74f792679" },
+    "offline.png": { "width": 320, "height": 320, "colors": 324, "sha256": "a2e3ae8acae3981b8ea639a1ab568708c7f36bc7845d1e2a1cf35f2bbde42b48" },
+    "celebrate.png": { "width": 320, "height": 320, "colors": 1067, "sha256": "b54c08812dd3232463218dcd3c586a661c09a002cdc240d0b4a243e707b3989c" },
+    "settings.png": { "width": 780, "height": 760, "colors": 2531, "sha256": "0180593c88d0c39ed65c531f9604b19fca98911ecae2c4fe4b1790ccc51424df" },
+    "contact-sheet.png": { "width": 1032, "height": 768, "colors": 1836, "sha256": "40a2b1ba0cfa7b336413682320f45cabe60f749863c4b7c6487a16d5c4cfd636" }
+  }
+}

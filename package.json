@@ -1,0 +1,42 @@
+{
+  "name": "herdr-pet",
+  "private": true,
+  "version": "0.4.0-beta.0",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "check:bundle-size": "node scripts/check-bundle-size.mjs",
+    "check:metadata": "node scripts/check-project-metadata.mjs",
+    "check:visual-baseline": "node scripts/check-visual-baseline.mjs",
+    "perf:smoke": "bash scripts/performance-smoke.sh",
+    "perf:soak": "bash scripts/performance-soak.sh",
+    "stress:linux": "bash scripts/stress-smoke.sh",
+    "runtime:self-test:linux": "bash scripts/runtime-self-test.sh",
+    "runtime:self-test:wayland": "bash scripts/runtime-self-test-wayland.sh",
+    "runtime:self-test:native": "node scripts/runtime-self-test-native.mjs",
+    "visual:capture:linux": "bash scripts/capture-linux-visuals.sh",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
+    "@tauri-apps/plugin-opener": "^2.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "jsdom": "^27.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.2.0",
+    "vitest": "^4.0.0"
+  }
+}

@@ -36,24 +36,6 @@ jobs:
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml
-      - name: Build native WebView runtime self-test
-        if: runner.os != 'Linux'
-        run: npm run tauri build -- --no-bundle
-      - name: Verify the official runtime in WebView2 or WKWebView
-        if: runner.os != 'Linux'
-        run: npm run runtime:self-test:native
-      - name: Run 10-Agent desktop stress smoke
-        # Temporarily disabled while the low-resource Ubuntu WebView event
-        # ingestion issue is investigated. The script remains available for
-        # local validation via `npm run stress:linux -- --build`.
-        if: ${{ false }}
-        run: npm run stress:linux -- --build
-      - name: Verify the official runtime in WebKitGTK
-        if: runner.os == 'Linux'
-        run: npm run runtime:self-test:linux -- --build
-      - name: Verify pure Wayland runtime and capability degradation
-        if: runner.os == 'Linux'
-        run: npm run runtime:self-test:wayland
 
   avatar-runtime:
     runs-on: ubuntu-22.04

@@ -54,6 +54,27 @@ jobs:
       - run: cargo test --manifest-path src-tauri/Cargo.toml --all-features
       - name: Build executable without an installer
         run: npm run tauri build -- --no-bundle ${{ matrix.target_args }}
+      - name: Sign Windows executable when a certificate is configured
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_BASE64)) {
+            Write-Host 'Windows signing certificate is not configured; keeping the executable unsigned.'
+            exit 0
+          }
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'herdr-pet-signing.pfx'
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
+          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signTool) { throw 'Windows SDK signtool.exe was not found on the runner.' }
+          & $signTool.FullName sign /fd SHA256 /f $certificatePath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td SHA256 "${{ matrix.executable_path }}"
+          if ($LASTEXITCODE -ne 0) { throw "signtool.exe failed with exit code $LASTEXITCODE." }
+          $signature = Get-AuthenticodeSignature "${{ matrix.executable_path }}"
+          if ($signature.Status -ne 'Valid') { throw "Windows signature verification failed: $($signature.Status)." }
       - name: Verify executable exists
         shell: bash
         run: test -f "${{ matrix.executable_path }}"

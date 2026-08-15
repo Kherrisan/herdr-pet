@@ -1,5 +1,8 @@
 name: Build executables
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   push:
@@ -60,3 +63,20 @@ jobs:
           path: ${{ matrix.executable_path }}
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download executable artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

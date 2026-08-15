@@ -28,7 +28,9 @@ if [[ "${1:-}" == "--build" ]]; then
   cargo build --release --manifest-path "$project_root/src-tauri/Cargo.toml"
 fi
 [[ -x "$binary_path" ]] || { echo "Release binary is missing. Run: npm run stress:linux -- --build" >&2; exit 1; }
-command -v xvfb-run >/dev/null || { echo "xvfb-run is required." >&2; exit 1; }
+for command in xvfb-run openbox rg; do
+  command -v "$command" >/dev/null || { echo "$command is required." >&2; exit 1; }
+done
 
 node "$project_root/scripts/perf-fake-herdr.mjs" "$fixture_socket" stress &
 server_pid=$!
@@ -43,7 +45,10 @@ setsid xvfb-run -a env \
   XDG_DATA_HOME="$fixture_root/data" \
   HERDR_SOCKET_PATH="$fixture_socket" \
   RUST_LOG="herdr_pet_lib=info" \
-  timeout 25s "$binary_path" >"$app_log" 2>&1 &
+  LIBGL_ALWAYS_SOFTWARE=1 \
+  WEBKIT_DISABLE_DMABUF_RENDERER=1 \
+  sh -c 'openbox --sm-disable >/dev/null 2>&1 & sleep 0.3; exec timeout 25s "$1"' \
+  sh "$binary_path" >"$app_log" 2>&1 &
 runner_pid=$!
 
 for _ in {1..120}; do

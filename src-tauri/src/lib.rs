@@ -1248,6 +1248,9 @@ pub fn run() {
                 }
             }
             let handle = app.handle().clone();
+            tauri::async_runtime::spawn(
+                state.clone().run_runtime_emitter(handle.clone()),
+            );
             tauri::async_runtime::spawn(async move { herdr::run(handle, state).await });
             Ok(())
         })

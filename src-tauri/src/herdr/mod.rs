@@ -176,7 +176,7 @@ async fn connect_and_subscribe(
                         .write()
                         .await
                         .remove(&agent.session_id, &agent.pane_id);
-                    state.emit_runtime(app).await;
+                    state.queue_runtime_emit();
                     continue;
                 }
                 let transition = state.agents.write().await.update(agent.clone());
@@ -190,7 +190,7 @@ async fn connect_and_subscribe(
                                 | crate::agents::TransitionKind::AttentionRequested
                         )
                     {
-                        state.emit_runtime(app).await;
+                        state.queue_runtime_emit();
                         continue;
                     }
                     if let Some(intent) = state
@@ -202,7 +202,7 @@ async fn connect_and_subscribe(
                         let _ = app.emit("pet://intent", intent);
                     }
                 }
-                state.emit_runtime(app).await;
+                state.queue_runtime_emit();
             }
             EventMessage::PaneExited(data) | EventMessage::PaneClosed(data) => {
                 let removed = state

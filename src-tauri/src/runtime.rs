@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use serde::Serialize;
 use tauri::async_runtime::JoinHandle;
@@ -57,6 +57,7 @@ pub struct RuntimeState {
     pub connection: RwLock<ConnectionStatus>,
     pub intents: RwLock<IntentFactory>,
     pub reconnect: Notify,
+    runtime_emit: Notify,
     pub position_save: std::sync::Mutex<Option<JoinHandle<()>>>,
     pub metrics: RwLock<RuntimeMetrics>,
 }
@@ -87,6 +88,7 @@ impl RuntimeState {
             connection: RwLock::new(ConnectionStatus::default()),
             intents: RwLock::new(IntentFactory::default()),
             reconnect: Notify::new(),
+            runtime_emit: Notify::new(),
             position_save: std::sync::Mutex::new(None),
             metrics: RwLock::new(RuntimeMetrics {
                 started_at_ms: unix_time_ms(),
@@ -117,6 +119,18 @@ impl RuntimeState {
             "herdr://connection-changed",
             self.connection.read().await.clone(),
         );
+    }
+
+    pub fn queue_runtime_emit(&self) {
+        self.runtime_emit.notify_one();
+    }
+
+    pub async fn run_runtime_emitter(self: Arc<Self>, app: AppHandle) {
+        loop {
+            self.runtime_emit.notified().await;
+            tokio::time::sleep(Duration::from_millis(16)).await;
+            self.emit_runtime(&app).await;
+        }
     }
 
     pub async fn set_disconnected(&self, app: &AppHandle, error: String, retry_in_ms: u64) {

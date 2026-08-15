@@ -489,9 +489,13 @@ fn install_at(root: &Path, source: &str, avatar_id: &str) -> Result<AvatarInstal
         project
             .write_all(source.as_bytes())
             .and_then(|_| project.sync_all())
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| format!("cannot write Avatar project: {error}"))?;
+        // Windows does not allow renaming a directory while a file inside it
+        // is still open. Unix permits this, so keep the close explicit.
+        drop(project);
         write_json_atomic(&temporary.path().join("metadata.json"), &installation)?;
-        fs::rename(temporary.path(), &target).map_err(|error| error.to_string())?;
+        fs::rename(temporary.path(), &target)
+            .map_err(|error| format!("cannot finalize Avatar installation: {error}"))?;
     } else {
         write_json_atomic(&target.join("metadata.json"), &installation)?;
     }

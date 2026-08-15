@@ -1,57 +1,211 @@
-# Herdr Pet
+<p align="center">
+  <img src="docs/screenshots/herdr-pet-logo.png" alt="Herdr Pet logo" width="260">
+</p>
 
-基于 Tauri 2、Rust、React 和 TypeScript 的 Herdr 桌面宠物。当前实现包含透明置顶宠物窗口、设置窗口、系统托盘、Herdr Socket 监听、多 Agent 调度与过滤、Avatar Studio Project v2 导入、官方 Bible Strong Avatar Lab 程序化 SVG 运行时，以及桌面配置/位置持久化。
+<h1 align="center">Herdr Pet</h1>
 
-头像渲染直接集成 [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab) 官方导出器和浏览器运行时，固定版本及许可证信息见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+Herdr Pet turns live [Herdr](https://github.com/herdr-dev/herdr) agent activity into an animated desktop companion. It stays in a transparent, always-on-top window and reacts when an agent starts working, needs attention, completes a turn, disconnects, or becomes idle.
 
-本项目采用 GNU AGPL v3.0-only，完整许可证文本随上游源码保存在 `third-party/avatar-lab/LICENSE`。
+Built with Tauri 2, Rust, React, and TypeScript, the application keeps the desktop shell small while using the official [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab) browser runtime for procedural SVG avatars and animations.
 
-## 开发环境
+<p align="center">
+  <img src="docs/screenshots/pet-working.png" alt="Herdr Pet reacting while an agent is working" width="280">
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/pet-turn-completed.png" alt="Herdr Pet celebrating a completed agent turn" width="280">
+</p>
 
-Ubuntu / Debian 需要先安装 Tauri 的原生依赖：
+<p align="center"><em>Working on the left; celebrating a completed turn on the right.</em></p>
+
+![Herdr Pet state overview: sleeping, idle, working, attention required, offline, and turn completed](docs/screenshots/pet-state-overview.png)
+
+<p align="center"><em>Representative states captured from the real transparent desktop overlay.</em></p>
+
+## At a glance
+
+- **Agent activity at a glance:** turn Herdr's background agent events into persistent states and short reaction animations.
+- **A real desktop pet:** transparent, frameless, draggable, always on top, and absent from the taskbar.
+- **Multi-agent aware:** aggregate many agents without allowing a burst of completion events to overwhelm the animation queue.
+- **Custom avatars:** import Avatar Studio Project v2 JSON and render it with the official Avatar Lab runtime.
+- **Local by design:** communicate with Herdr over a local Unix socket or Windows named pipe; WSL mode uses a process-bound `wsl.exe` bridge without opening a TCP port.
+- **Cross-platform:** build raw executables for Linux, Windows, and macOS.
+
+## Third-party integration
+
+### Herdr
+
+[Herdr](https://github.com/herdr-dev/herdr) observes coding agents and exposes their state through a documented local protocol. Herdr Pet subscribes to that protocol, maintains an in-memory agent cache, detects meaningful transitions, and converts them into pet states or transient animation intents.
+
+The aggregate state priority is designed to keep important information visible:
+
+```text
+needs attention > working > idle
+```
+
+Connection loss is represented as `offline`, while a paused or deliberately quiet pet can use `sleeping`. Turn-completion events are merged within a configurable interval so several agents finishing together produce one bounded celebration rather than a rapidly growing queue.
+
+The Herdr source used as the protocol reference and for integration fixtures is vendored at [`third-party/herdr`](third-party/herdr). It is licensed under Apache-2.0.
+
+### Bible Strong Avatar Lab
+
+Herdr Pet directly integrates the official procedural exporter and browser runtime from [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab). The runtime generates Avatar Data v1 from an Avatar Studio Project v2 document and renders the resulting animated SVG inside the system WebView.
+
+Imported project files are copied into the application's data directory, so the pet does not depend on the original JSON file remaining accessible. Herdr Pet adds runtime controls for animation speed, frame rate, reduced motion, reliable pause behavior, and stable near-spherical rendering; the upstream Avatar Data and Studio Project formats remain unchanged.
+
+The pinned source is available at [`third-party/avatar-lab`](third-party/avatar-lab) under AGPL-3.0-only. Exact revisions, local modifications, and license paths are documented in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
+## Features
+
+### Desktop companion
+
+- Transparent, frameless, always-on-top overlay
+- Free dragging with saved monitor-aware position
+- Adjustable scale from 30% to 200% and opacity from 35% to 100%
+- Optional position lock and mouse click-through
+- Configurable global show/hide shortcut (`Cmd/Ctrl+Shift+H` by default)
+- System tray controls and optional launch at login
+
+### Agent reactions
+
+- Persistent animations for sleeping, idle, working, attention required, and offline states
+- Transient reactions for agent detection, work starting, turn completion, reconnection, and exit
+- Multi-agent filtering and aggregation
+- Priority scheduling, completion batching, queue limits, cooldowns, and configurable event rules
+- Optional speech bubbles and notification sounds
+
+### Customization and settings
+
+- Native Avatar Studio Project v2 JSON import
+- Animation-to-event mapping with a live preview
+- Animation speed, frame-rate, reduced-motion, size, and opacity controls
+- Tabbed settings interface in English and Simplified Chinese
+- WSL connection mode for a Windows-native pet with Herdr running inside WSL
+- Redacted diagnostic export for troubleshooting
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["Coding agents"] --> B["Herdr event hooks"]
+    B --> C["Herdr local protocol"]
+    C -->|"Unix socket / named pipe"| D["Rust connection + agent cache"]
+    W["Herdr in WSL"] -->|"wsl.exe + Unix socket relay"| D
+    D --> E["Aggregation + intent scheduler"]
+    E -->|"Tauri commands and events"| F["React settings UI"]
+    E -->|"Tauri events"| G["Always-on-top pet overlay"]
+    H["Avatar Studio Project v2"] --> I["Official Avatar Lab runtime"]
+    I --> G
+    F --> H
+```
+
+| Layer | Responsibility |
+| --- | --- |
+| **Tauri 2 shell** | Window lifecycle, tray, global shortcut, autostart, native file dialog, and platform integration |
+| **Rust core** | Herdr discovery and transport, WSL relay, agent cache, transition detection, configuration, avatar storage, and diagnostics |
+| **React + TypeScript** | Tabbed settings, live preview, overlay state, and animation scheduling |
+| **Avatar Lab runtime** | Procedural SVG generation, animation playback, blinking, ambient motion, and runtime controls |
+| **Local persistence** | Versioned JSON configuration, window position, and installed avatar projects in the platform application-data directory |
+
+The application normally creates only the pet overlay. Run it with `--settings`, or use the tray menu, to create the settings WebView on demand.
+
+## Development setup
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 24 and npm
+- [Rust](https://rustup.rs/) stable, version 1.85 or newer
+- Platform dependencies required by [Tauri 2](https://v2.tauri.app/start/prerequisites/)
+
+#### Ubuntu / Debian
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y build-essential pkg-config libdbus-1-dev libgtk-3-dev \
+sudo apt-get install -y \
+  build-essential pkg-config libdbus-1-dev libgtk-3-dev \
   libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
 ```
 
-然后安装依赖并启动：
+#### Windows
+
+Install the Microsoft C++ Build Tools and Rust's MSVC toolchain. WebView2 is included with current Windows 10 and Windows 11 installations; install the WebView2 Runtime separately if it is unavailable.
+
+#### macOS
+
+Install the Xcode Command Line Tools:
 
 ```bash
-npm install
+xcode-select --install
+```
+
+### Clone and run
+
+```bash
+git clone https://github.com/Kherrisan/herdr-pet.git
+cd herdr-pet
+npm ci
 npm run tauri dev
 ```
 
-默认全局快捷键 `Cmd/Ctrl+Shift+H` 可随时显示或隐藏宠物，即使已经开启鼠标穿透也能恢复。设置页可配置开机启动、提示音、动画速度、观察范围和脱敏诊断导出。
+Herdr Pet discovers Herdr in this order:
 
-需要从终端直接打开设置页时，可以运行已安装的 `herdr-pet --settings`；设置 WebView 会按需创建，不会在普通后台启动时占用资源。
+1. The explicit socket path saved in the application settings
+2. `HERDR_SOCKET_PATH`
+3. The explicit or environment-provided Herdr session
+4. `~/.config/herdr/herdr.sock`
 
-应用按照以下顺序寻找 Herdr：配置文件中的显式 Socket、`HERDR_SOCKET_PATH`、显式/环境中的 Session，最后是默认的 `~/.config/herdr/herdr.sock`。命名 Session 使用 `~/.config/herdr/sessions/<name>/herdr.sock`。Windows 由与 Herdr 相同的 `interprocess` 命名空间规则映射到 Named Pipe。
+A named session resolves to `~/.config/herdr/sessions/<name>/herdr.sock`. On Windows, the matching `interprocess` namespace resolves to a named pipe.
 
-Windows 原生版还支持在设置页勾选“WSL 模式”，用于连接运行在 WSL 中的 Herdr。应用通过 `wsl.exe` 启动按连接生存的本地转发进程，不开放 TCP 端口；发行版留空时使用系统默认 WSL 发行版，Linux Socket 留空时在该发行版内按 `HERDR_SOCKET_PATH`、Session 和默认配置目录自动发现。WSL 环境需要提供支持 Unix Socket 的 `nc`，Ubuntu/Debian 可执行 `sudo apt-get install netcat-openbsd`。
+For Windows + WSL, enable **WSL mode** in the connection settings. You may optionally select a distribution and Linux socket path; leaving them empty uses the default distribution and normal Herdr discovery. The WSL distribution must provide `nc` with Unix-socket support:
 
-## 验证
+```bash
+sudo apt-get install netcat-openbsd
+```
+
+### Test and validate
 
 ```bash
 npm test
 npm run build
 cargo test --manifest-path src-tauri/Cargo.toml
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+cargo clippy --manifest-path src-tauri/Cargo.toml \
+  --all-targets --all-features -- -D warnings
 ```
 
-Rust 桌面测试和 Clippy 需要上面的 Linux 原生依赖。若只想运行不依赖 GTK/WebKitGTK 的协议、状态迁移、聚合和规则引擎测试，可执行 `cargo test --manifest-path src-tauri/Cargo.toml --no-default-features`。
+Protocol, aggregation, state-transition, and rule-engine tests can run without GTK/WebKitGTK:
 
-Linux Release 性能短烟测可执行 `npm run perf:smoke -- --build`，并通过 `HERDR_PET_PERF_SCENARIO=sleeping|idle|working` 选择稳定夹具。指标统计 Tauri 与 WebKit 完整进程树；Xvfb 结果只用于建立软件渲染基线，不替代真实 GPU 桌面测试。八小时长稳当前不作为发布门禁，`perf:soak` 仅保留为后续可选工具。
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+```
 
-Linux X11 视觉基线可在 Release 二进制构建后执行 `npm run visual:capture:linux`。它会使用隔离的 Xvfb/Openbox 会话和假 Herdr，抓取六种宠物状态及设置页；结果与限制见 `plans/visual-baseline/linux-x11/README.md`。
+Additional desktop checks are available when their Linux display dependencies are installed:
 
-多 Agent 端到端压力验收可执行 `npm run stress:linux -- --build`。夹具会让 10 个 Agent 产生 100 次完成迁移，在事件洪峰中插入 Blocked，并强制断开订阅以验证真实桌面进程能够重连。
+```bash
+npm run perf:smoke -- --build
+npm run stress:linux -- --build
+npm run runtime:self-test:linux -- --build
+npm run visual:capture:linux
+```
 
-官方 Avatar Lab 浏览器运行时可执行 `npm run runtime:self-test:linux -- --build` 做 X11 系统 WebView 自检。应用会在真实 WebKitGTK 中加载运行时、创建 Controller、确认动画与 SVG，并验证 Overlay 的可见性、无边框、逻辑尺寸、Scale Factor 和置顶 API，写出机器可读 v2 报告后自行退出。安装 Weston 后可运行 `npm run runtime:self-test:wayland`，在无 XWayland 的纯 Wayland 会话确认运行时正常且全局快捷键、绝对定位明确降级。Windows/macOS 构建后执行 `npm run runtime:self-test:native`；CI 使用同一报告协议验证 WebKitGTK、WebView2 或 WKWebView。
+The visual capture uses an isolated Xvfb/Openbox session and a fake Herdr server. Runtime self-tests exercise the actual system WebView rather than a DOM-only substitute.
 
-三平台产物由 `Build executables` 工作流生成：Linux x86_64、Windows x86_64，以及 macOS Apple Silicon/Intel 的 Release 可执行文件。当前不生成 `.deb`、MSI/NSIS、DMG 或其他安装器。
+### Build an executable
 
-在 Debian/Ubuntu 上可选地交叉验证 Windows 链接：安装 `binutils-mingw-w64-x86-64 gcc-mingw-w64-x86-64`，添加 Rust 的 `x86_64-pc-windows-gnu` target，然后运行 `npm run tauri build -- --target x86_64-pc-windows-gnu --no-bundle`。产物位于 `src-tauri/target/x86_64-pc-windows-gnu/release/herdr-pet.exe`；该检查不能替代 Windows 上的 WebView2 与窗口行为验收。
+Build a native release executable without an installer:
 
-项目使用的 Herdr 源码固定在 [`third-party/herdr`](third-party/herdr)，开发期协议 Schema 位于 [`third-party/herdr/docs/next/api/herdr-api.schema.json`](third-party/herdr/docs/next/api/herdr-api.schema.json)。
+```bash
+npm run tauri build -- --no-bundle
+```
+
+The executable is written below `src-tauri/target/release/`. The `Build executables` GitHub Actions workflow produces Linux x86_64, Windows x86_64, and both Apple Silicon and Intel macOS artifacts on tags matching `v*` or by manual dispatch.
+
+The project currently distributes raw executables rather than `.deb`, MSI/NSIS, DMG, or other installer packages. A Windows GNU cross-build may require the generated `WebView2Loader.dll` beside `herdr-pet.exe`; native Windows CI builds use the normal Windows toolchain.
+
+## Platform notes
+
+- **Linux X11:** supports the full overlay positioning and global-shortcut behavior.
+- **Linux Wayland:** avatar rendering works, but compositor security policies may limit absolute positioning and global shortcuts.
+- **Windows:** supports native Herdr named pipes and the optional WSL bridge.
+- **macOS:** uses WKWebView and the platform's always-on-top window behavior.
+
+## License
+
+Herdr Pet is licensed under **GNU AGPL v3.0-only**. See [`LICENSE`](LICENSE) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the project and dependency license details.

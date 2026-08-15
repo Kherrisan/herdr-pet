@@ -4,7 +4,7 @@ version = "0.4.0-beta.0"
 description = "A desktop companion for Herdr agents"
 authors = ["Herdr Pet contributors"]
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 license = "AGPL-3.0-only"
 
 [lib]

@@ -103,10 +103,10 @@ async fn connect_and_subscribe(
     }
     info!(panes = pane_ids.len(), "connected to Herdr");
     let config = state.config.read().await.clone();
-    if !config.herdr.observation.quiet() {
-        if let Some(reconnect_intent) = state.intents.write().await.reconnected(&config) {
-            let _ = app.emit("pet://intent", reconnect_intent);
-        }
+    if !config.herdr.observation.quiet()
+        && let Some(reconnect_intent) = state.intents.write().await.reconnected(&config)
+    {
+        let _ = app.emit("pet://intent", reconnect_intent);
     }
     state.emit_runtime(app).await;
 
@@ -212,12 +212,11 @@ async fn connect_and_subscribe(
                     .remove(endpoint.session_id(), &data.pane_id);
                 if let Some(agent) = removed {
                     let config = state.config.read().await.clone();
-                    if !config.herdr.observation.quiet() {
-                        if let Some(intent) =
+                    if !config.herdr.observation.quiet()
+                        && let Some(intent) =
                             state.intents.write().await.agent_exited(&agent, &config)
-                        {
-                            let _ = app.emit("pet://intent", intent);
-                        }
+                    {
+                        let _ = app.emit("pet://intent", intent);
                     }
                 }
                 state.emit_runtime(app).await;
@@ -226,15 +225,14 @@ async fn connect_and_subscribe(
             EventMessage::PaneCreated(data) | EventMessage::AgentDetected(data) => {
                 info!(pane_id = %data.pane_id, "Herdr topology changed");
                 let config = state.config.read().await.clone();
-                if !config.herdr.observation.quiet() {
-                    if let Some(intent) = state
+                if !config.herdr.observation.quiet()
+                    && let Some(intent) = state
                         .intents
                         .write()
                         .await
                         .agent_detected(&data.pane_id, &config)
-                    {
-                        let _ = app.emit("pet://intent", intent);
-                    }
+                {
+                    let _ = app.emit("pet://intent", intent);
                 }
                 return Ok(());
             }

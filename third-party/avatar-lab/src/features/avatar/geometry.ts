@@ -1020,8 +1020,7 @@ const projectedEllipsoidPath = (pose: AvatarPose, surface: SurfaceConfig) => {
   const largestDimension = Math.max(...dimensions)
   const smallestDimension = Math.min(...dimensions)
   const isSphere =
-    largestDimension > 0 &&
-    largestDimension - smallestDimension <= largestDimension * 0.001
+    largestDimension > 0 && largestDimension - smallestDimension <= largestDimension * 0.001
   const normalizedDiameter = dimensions.reduce((sum, value) => sum + value, 0) / dimensions.length
   const radii: Point3 = isSphere
     ? [normalizedDiameter / 2, normalizedDiameter / 2, normalizedDiameter / 2]

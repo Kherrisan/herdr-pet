@@ -112,7 +112,7 @@ The application normally creates only the pet overlay. Run it with `--settings`,
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 24 and npm
-- [Rust](https://rustup.rs/) stable, version 1.85 or newer
+- [Rust](https://rustup.rs/) stable, version 1.88 or newer
 - Platform dependencies required by [Tauri 2](https://v2.tauri.app/start/prerequisites/)
 
 #### Ubuntu / Debian

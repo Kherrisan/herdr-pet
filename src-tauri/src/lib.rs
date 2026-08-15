@@ -334,15 +334,13 @@ async fn update_app_config(
             return Err(error.to_string());
         }
     }
-    if autostart_changed {
-        if let Err(error) = set_autostart(&app, config.desktop.auto_start) {
-            if let Some(overlay) = &overlay {
-                let _ = overlay.set_always_on_top(previous.overlay.always_on_top);
-                let _ = overlay.set_ignore_cursor_events(previous.overlay.click_through);
-            }
-            rollback_shortcut();
-            return Err(error);
+    if autostart_changed && let Err(error) = set_autostart(&app, config.desktop.auto_start) {
+        if let Some(overlay) = &overlay {
+            let _ = overlay.set_always_on_top(previous.overlay.always_on_top);
+            let _ = overlay.set_ignore_cursor_events(previous.overlay.click_through);
         }
+        rollback_shortcut();
+        return Err(error);
     }
     if let Err(error) = config::save(&app, &config) {
         if autostart_changed {

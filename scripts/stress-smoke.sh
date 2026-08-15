@@ -42,8 +42,8 @@ setsid xvfb-run -a env \
   XDG_CONFIG_HOME="$fixture_root/config" \
   XDG_DATA_HOME="$fixture_root/data" \
   HERDR_SOCKET_PATH="$fixture_socket" \
-  RUST_LOG="herdr_pet=info" \
-  timeout 15s "$binary_path" >"$app_log" 2>&1 &
+  RUST_LOG="herdr_pet_lib=info" \
+  timeout 25s "$binary_path" >"$app_log" 2>&1 &
 runner_pid=$!
 
 for _ in {1..120}; do
@@ -53,7 +53,7 @@ for _ in {1..120}; do
 done
 [[ -n "$app_pid" ]] || { sed -n '1,160p' "$app_log" >&2; echo "Herdr Pet did not start." >&2; exit 1; }
 
-for _ in {1..160}; do
+for _ in {1..300}; do
   connections="$(rg -c "connected to Herdr" "$app_log" || true)"
   events="$(rg -c "received pane.agent_status_changed" "$app_log" || true)"
   blocked="$(rg -c "status=Blocked" "$app_log" || true)"

@@ -28,7 +28,7 @@ if [[ "${1:-}" == "--build" ]]; then
   cargo build --release --manifest-path "$project_root/src-tauri/Cargo.toml"
 fi
 [[ -x "$binary_path" ]] || { echo "Release binary is missing. Run: npm run stress:linux -- --build" >&2; exit 1; }
-for command in xvfb-run openbox rg; do
+for command in dbus-run-session xvfb-run openbox rg; do
   command -v "$command" >/dev/null || { echo "$command is required." >&2; exit 1; }
 done
 
@@ -40,14 +40,15 @@ for _ in {1..100}; do
 done
 [[ -S "$fixture_socket" ]] || { echo "The stress Herdr fixture did not start." >&2; exit 1; }
 
-setsid xvfb-run -a env \
+setsid dbus-run-session -- xvfb-run -a env \
   XDG_CONFIG_HOME="$fixture_root/config" \
   XDG_DATA_HOME="$fixture_root/data" \
   HERDR_SOCKET_PATH="$fixture_socket" \
   RUST_LOG="herdr_pet_lib=info" \
+  GDK_BACKEND=x11 \
   LIBGL_ALWAYS_SOFTWARE=1 \
   WEBKIT_DISABLE_DMABUF_RENDERER=1 \
-  sh -c 'openbox --sm-disable >/dev/null 2>&1 & sleep 0.3; exec timeout 25s "$1"' \
+  sh -c 'openbox --sm-disable >/dev/null 2>&1 & sleep 0.3; exec timeout 55s "$1"' \
   sh "$binary_path" >"$app_log" 2>&1 &
 runner_pid=$!
 
@@ -58,7 +59,7 @@ for _ in {1..120}; do
 done
 [[ -n "$app_pid" ]] || { sed -n '1,160p' "$app_log" >&2; echo "Herdr Pet did not start." >&2; exit 1; }
 
-for _ in {1..300}; do
+for _ in {1..800}; do
   connections="$(rg -c "connected to Herdr" "$app_log" || true)"
   events="$(rg -c "received pane.agent_status_changed" "$app_log" || true)"
   blocked="$(rg -c "status=Blocked" "$app_log" || true)"

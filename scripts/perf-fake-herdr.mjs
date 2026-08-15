@@ -36,6 +36,9 @@ const delay = (durationMs) => new Promise((resolve) => setTimeout(resolve, durat
 
 const writeStressEvent = async (socket, index, status) => {
   if (!socket.write(`${stressEvent(index, status)}\n`)) await once(socket, "drain");
+  // Keep the fixture demanding, but leave the desktop/WebView event loop
+  // enough time to consume each notification on shared CI runners.
+  await delay(8);
 };
 
 const runStressScenario = async (socket) => {
@@ -47,12 +50,12 @@ const runStressScenario = async (socket) => {
     for (let index = 0; index < 10; index += 1) {
       await writeStressEvent(socket, index, "working");
     }
-    await delay(25);
+    await delay(100);
     if (cycle === 4) await writeStressEvent(socket, 0, "blocked");
     for (let index = 0; index < 10; index += 1) {
       await writeStressEvent(socket, index, "done");
     }
-    await delay(45);
+    await delay(150);
   }
   await delay(100);
   stressDisconnected = true;

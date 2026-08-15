@@ -1,4 +1,10 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::Duration,
+};
 
 use serde::Serialize;
 use tauri::async_runtime::JoinHandle;
@@ -58,6 +64,7 @@ pub struct RuntimeState {
     pub intents: RwLock<IntentFactory>,
     pub reconnect: Notify,
     runtime_emit: Notify,
+    runtime_revision: AtomicU64,
     pub position_save: std::sync::Mutex<Option<JoinHandle<()>>>,
     pub metrics: RwLock<RuntimeMetrics>,
 }
@@ -89,6 +96,7 @@ impl RuntimeState {
             intents: RwLock::new(IntentFactory::default()),
             reconnect: Notify::new(),
             runtime_emit: Notify::new(),
+            runtime_revision: AtomicU64::new(0),
             position_save: std::sync::Mutex::new(None),
             metrics: RwLock::new(RuntimeMetrics {
                 started_at_ms: unix_time_ms(),
@@ -122,13 +130,20 @@ impl RuntimeState {
     }
 
     pub fn queue_runtime_emit(&self) {
+        self.runtime_revision.fetch_add(1, Ordering::Relaxed);
         self.runtime_emit.notify_one();
     }
 
     pub async fn run_runtime_emitter(self: Arc<Self>, app: AppHandle) {
         loop {
             self.runtime_emit.notified().await;
-            tokio::time::sleep(Duration::from_millis(16)).await;
+            loop {
+                let revision = self.runtime_revision.load(Ordering::Relaxed);
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                if revision == self.runtime_revision.load(Ordering::Relaxed) {
+                    break;
+                }
+            }
             self.emit_runtime(&app).await;
         }
     }

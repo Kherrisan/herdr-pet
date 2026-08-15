@@ -49,7 +49,7 @@ const runStressScenario = (socket) => {
   }, 480);
   setTimeout(() => {
     stressDisconnected = true;
-    socket.destroy();
+    socket.end();
   }, 1_050);
 };
 

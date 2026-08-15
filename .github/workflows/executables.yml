@@ -20,7 +20,7 @@ jobs:
             executable_path: src-tauri/target/release/herdr-pet
           - os: windows-latest
             target_args: ""
-            artifact_name: herdr-pet-windows-x86_64
+            artifact_name: herdr-pet-windows-x86_64.exe
             executable_path: src-tauri/target/release/herdr-pet.exe
           - os: macos-latest
             target_args: "--target aarch64-apple-darwin"
@@ -57,10 +57,13 @@ jobs:
       - name: Verify executable exists
         shell: bash
         run: test -f "${{ matrix.executable_path }}"
+      - name: Stage uniquely named executable
+        shell: bash
+        run: cp "${{ matrix.executable_path }}" "${{ matrix.artifact_name }}"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.executable_path }}
+          path: ${{ matrix.artifact_name }}
           if-no-files-found: error
           retention-days: 14
 

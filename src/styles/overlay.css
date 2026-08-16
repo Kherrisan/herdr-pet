@@ -174,7 +174,8 @@ button.agent-bubble { cursor: pointer; }
 
 @keyframes agent-list-pop-out {
   from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(18px) scale(.9); }
+  35% { opacity: .92; transform: translateY(0) scale(1.01); }
+  to { opacity: 0; transform: translateY(0) scale(.86); }
 }
 
 @keyframes agent-dot-breathe {

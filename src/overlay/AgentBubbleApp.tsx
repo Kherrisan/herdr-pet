@@ -42,7 +42,7 @@ export function AgentBubbleApp() {
       >
         <span className="agent-bubble-dot" />
         <span>{workingAgents.length}</span>
-        <span className="agent-bubble-chevron">{expanded ? "⌄" : "⌃"}</span>
+        <span className="agent-bubble-chevron" aria-hidden="true" />
       </button>
     </main>
   );

@@ -390,7 +390,7 @@ fn position_agent_bubble_windows_with_list_size(
         .map_err(|error| error.to_string())?;
     let list_position = tauri::PhysicalPosition::new(
         pet_position.x + (pet_size.width as i32 - list_size.width as i32) / 2,
-        position.y - list_size.height as i32 - gap,
+        position.y - list_size.height as i32,
     );
     list.set_position(list_position)
         .map_err(|error| error.to_string())

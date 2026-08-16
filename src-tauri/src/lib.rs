@@ -98,7 +98,7 @@ fn runtime_self_test_window_passes(window: &RuntimeSelfTestWindow) -> bool {
         && window.always_on_top_observed.unwrap_or(true)
         && window.scale_factor.is_finite()
         && window.scale_factor > 0.0
-        && (window.logical_width - 320.0).abs() <= 2.0
+        && (window.logical_width - 360.0).abs() <= 2.0
         && (window.logical_height - 416.0).abs() <= 2.0
 }
 
@@ -298,9 +298,15 @@ async fn persist_config_change(
 #[cfg(feature = "desktop")]
 fn resize_overlay_for_scale(window: &tauri::WebviewWindow, scale: f64) -> Result<(), String> {
     let edge = (320.0 * scale.clamp(0.3, 2.0)).round().max(96.0);
+    // Avatar Lab animations can rotate ears and shadows beyond the nominal
+    // avatar square. Native webviews clip that overflow even when CSS does not.
+    let horizontal_headroom = (edge * 0.0625).round().max(6.0);
     let headroom = (edge * 0.3).round();
     window
-        .set_size(tauri::LogicalSize::new(edge, edge + headroom))
+        .set_size(tauri::LogicalSize::new(
+            edge + horizontal_headroom * 2.0,
+            edge + headroom,
+        ))
         .map_err(|error| error.to_string())
 }
 
@@ -1522,7 +1528,7 @@ mod runtime_self_test_tests {
             decorated: false,
             always_on_top_requested: true,
             always_on_top_observed: Some(true),
-            logical_width: 320.0,
+            logical_width: 360.0,
             logical_height: 416.0,
             scale_factor: 2.0,
         }
@@ -1543,7 +1549,7 @@ mod runtime_self_test_tests {
         window.logical_width = 325.0;
         assert!(!runtime_self_test_window_passes(&window));
 
-        window.logical_width = 320.0;
+        window.logical_width = 360.0;
         window.always_on_top_observed = Some(false);
         assert!(!runtime_self_test_window_passes(&window));
     }

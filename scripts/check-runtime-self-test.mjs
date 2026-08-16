@@ -25,7 +25,7 @@ if (
   !Number.isFinite(report.window.scaleFactor) ||
   report.window.scaleFactor <= 0 ||
   !Number.isFinite(report.window.logicalWidth) ||
-  Math.abs(report.window.logicalWidth - 320) > 2 ||
+  Math.abs(report.window.logicalWidth - 360) > 2 ||
   !Number.isFinite(report.window.logicalHeight) ||
   Math.abs(report.window.logicalHeight - 320) > 2
 ) {

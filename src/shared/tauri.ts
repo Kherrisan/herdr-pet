@@ -32,6 +32,7 @@ export const api = {
   resetOverlayPosition: () => invoke<void>("reset_overlay_position"),
   setAgentBubbleLayout: (workingAgentCount: number, expanded: boolean, summaryVisible = true) =>
     invoke<void>("set_agent_bubble_layout", { workingAgentCount, expanded, summaryVisible }),
+  hideAgentBubbleList: () => invoke<void>("hide_agent_bubble_list"),
   inspectAvatarProject: (source: string) =>
     invoke<AvatarProjectInspection>("inspect_avatar_project", { source }),
   inspectAvatarProjectFile: (path: string) =>

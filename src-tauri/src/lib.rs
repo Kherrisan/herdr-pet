@@ -348,9 +348,17 @@ async fn set_agent_bubble_layout(
             .map_err(|error| error.to_string())?;
     } else {
         let _ = app.emit_to("agent-list", "agent-bubbles://expanded", false);
-        let _ = list.hide();
     }
     Ok(())
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+fn hide_agent_bubble_list(app: AppHandle) -> Result<(), String> {
+    app.get_webview_window("agent-list")
+        .ok_or("agent list window not found")?
+        .hide()
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(feature = "desktop")]
@@ -1460,6 +1468,7 @@ pub fn run() {
             open_settings,
             reset_overlay_position,
             set_agent_bubble_layout,
+            hide_agent_bubble_list,
             inspect_avatar_project,
             inspect_avatar_project_file,
             install_avatar_project,

@@ -6,6 +6,7 @@ import "../styles/overlay.css";
 
 const COMPLETED_BUBBLE_DURATION_MS = 4_000;
 const BUBBLE_HIDE_DELAY_MS = 3_000;
+const BUBBLE_COLLAPSE_DURATION_MS = 240;
 
 type BubbleInteraction = {
   source: "pet" | "summary" | "list";
@@ -123,8 +124,8 @@ export function AgentBubbleApp() {
     const next = !expanded;
     expandedRef.current = next;
     if (next) cancelHide();
-    await api.setAgentBubbleLayout(visibleAgents.length, next, true);
     setExpanded(next);
+    await api.setAgentBubbleLayout(visibleAgents.length, next, true);
   }
 
   return (
@@ -151,20 +152,53 @@ export function AgentBubbleApp() {
 
 export function AgentBubbleListApp() {
   const [expanded, setExpanded] = useState(false);
+  const [rendered, setRendered] = useState(false);
+  const renderedRef = useRef(false);
+  const collapseTimer = useRef<number | undefined>(undefined);
   const visibleAgents = useVisibleAgents();
 
   useEffect(() => {
+    function cancelCollapse() {
+      if (collapseTimer.current !== undefined) window.clearTimeout(collapseTimer.current);
+      collapseTimer.current = undefined;
+    }
+
+    function updateExpanded(next: boolean) {
+      cancelCollapse();
+      if (next) {
+        renderedRef.current = true;
+        setRendered(true);
+        setExpanded(true);
+        return;
+      }
+      setExpanded(false);
+      if (!renderedRef.current) {
+        void api.hideAgentBubbleList();
+        return;
+      }
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      collapseTimer.current = window.setTimeout(() => {
+        renderedRef.current = false;
+        setRendered(false);
+        collapseTimer.current = undefined;
+        void api.hideAgentBubbleList();
+      }, reducedMotion ? 0 : BUBBLE_COLLAPSE_DURATION_MS);
+    }
+
     const listeners = Promise.all([
-      listen<boolean>("agent-bubbles://expanded", ({ payload }) => setExpanded(payload)),
+      listen<boolean>("agent-bubbles://expanded", ({ payload }) => updateExpanded(payload)),
     ]);
-    return () => void listeners.then((dispose) => dispose.forEach((item) => item()));
+    return () => {
+      cancelCollapse();
+      void listeners.then((dispose) => dispose.forEach((item) => item()));
+    };
   }, []);
 
-  if (!expanded || !visibleAgents.length) return null;
+  if (!rendered || !visibleAgents.length) return null;
 
   return (
     <main
-      className="agent-bubble-list-stage is-expanded"
+      className={`agent-bubble-list-stage ${expanded ? "is-expanded" : "is-collapsing"}`}
       onPointerEnter={() => void emit("agent-bubbles://interaction", { source: "list", hovered: true })}
       onPointerLeave={() => void emit("agent-bubbles://interaction", { source: "list", hovered: false })}
     >

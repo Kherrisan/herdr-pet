@@ -13,7 +13,7 @@ type BubbleInteraction = {
   hovered: boolean;
 };
 
-type VisibleAgent = AgentInfo & { recentlyCompleted: boolean };
+type VisibleAgent = AgentInfo & { completed: boolean };
 
 function agentKey(agent: AgentInfo) {
   return `${agent.sessionId}:${agent.paneId}`;
@@ -21,7 +21,7 @@ function agentKey(agent: AgentInfo) {
 
 function useVisibleAgents(): VisibleAgent[] {
   const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [completed, setCompleted] = useState<Set<string>>(() => new Set());
+  const [transientCompletions, setTransientCompletions] = useState<Set<string>>(() => new Set());
   const previousStates = useRef(new Map<string, AgentInfo["state"]>());
   const completionTimers = useRef(new Map<string, number>());
 
@@ -30,18 +30,28 @@ function useVisibleAgents(): VisibleAgent[] {
       for (const agent of next) {
         const key = agentKey(agent);
         const previous = previousStates.current.get(key);
-        if (previous === "working" && (agent.state === "done" || agent.state === "idle")) {
+        if (previous === "working" && agent.state === "idle") {
           const existing = completionTimers.current.get(key);
           if (existing) window.clearTimeout(existing);
-          setCompleted((current) => new Set(current).add(key));
+          setTransientCompletions((current) => new Set(current).add(key));
           completionTimers.current.set(key, window.setTimeout(() => {
-            setCompleted((current) => {
+            setTransientCompletions((current) => {
               const updated = new Set(current);
               updated.delete(key);
               return updated;
             });
             completionTimers.current.delete(key);
           }, COMPLETED_BUBBLE_DURATION_MS));
+        } else if (agent.state !== "idle") {
+          const existing = completionTimers.current.get(key);
+          if (existing) window.clearTimeout(existing);
+          completionTimers.current.delete(key);
+          setTransientCompletions((current) => {
+            if (!current.has(key)) return current;
+            const updated = new Set(current);
+            updated.delete(key);
+            return updated;
+          });
         }
       }
       previousStates.current = new Map(next.map((agent) => [agentKey(agent), agent.state]));
@@ -58,8 +68,12 @@ function useVisibleAgents(): VisibleAgent[] {
   }, []);
 
   return agents
-    .filter((agent) => agent.state === "working" || completed.has(agentKey(agent)))
-    .map((agent) => ({ ...agent, recentlyCompleted: completed.has(agentKey(agent)) }));
+    .filter((agent) =>
+      agent.state === "working" || agent.state === "done" || transientCompletions.has(agentKey(agent)))
+    .map((agent) => ({
+      ...agent,
+      completed: agent.state === "done" || transientCompletions.has(agentKey(agent)),
+    }));
 }
 
 export function AgentBubbleApp() {
@@ -69,7 +83,7 @@ export function AgentBubbleApp() {
   const hoveredSources = useRef(new Set<BubbleInteraction["source"]>());
   const hideTimer = useRef<number | undefined>(undefined);
   const visibleAgents = useVisibleAgents();
-  const workingCount = visibleAgents.filter((agent) => !agent.recentlyCompleted).length;
+  const workingCount = visibleAgents.filter((agent) => !agent.completed).length;
 
   function cancelHide() {
     if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current);
@@ -139,7 +153,7 @@ export function AgentBubbleApp() {
         type="button"
         aria-expanded={expanded}
         aria-label={expanded ? "Collapse running agents" : "Show running agents"}
-        title={`${workingCount} working · ${visibleAgents.length - workingCount} recently completed`}
+        title={`${workingCount} working · ${visibleAgents.length - workingCount} completed`}
         onClick={() => void toggleExpanded()}
       >
         <span className={`agent-bubble-dot${workingCount ? "" : " is-completed"}`} />
@@ -214,7 +228,7 @@ export function AgentBubbleListApp() {
           >
             <span className="agent-bubble-copy">
               <span className="agent-bubble-workspace-row">
-                <span className={`agent-bubble-dot${agent.recentlyCompleted ? " is-completed" : ""}`} />
+                <span className={`agent-bubble-dot${agent.completed ? " is-completed" : ""}`} />
                 <span className="agent-bubble-workspace">{workspaceLabel}</span>
               </span>
               <span className="agent-bubble-agent">{agentLabel}</span>

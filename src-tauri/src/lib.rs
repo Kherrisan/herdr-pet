@@ -314,7 +314,7 @@ fn resize_overlay_for_scale(window: &tauri::WebviewWindow, scale: f64) -> Result
 #[tauri::command]
 async fn set_agent_bubble_layout(
     app: AppHandle,
-    working_agent_count: usize,
+    visible_agent_count: usize,
     expanded: bool,
     summary_visible: bool,
 ) -> Result<(), String> {
@@ -324,11 +324,11 @@ async fn set_agent_bubble_layout(
     let list = app
         .get_webview_window("agent-list")
         .ok_or("agent list window not found")?;
-    if working_agent_count == 0 {
+    if visible_agent_count == 0 {
         let _ = list.hide();
         return summary.hide().map_err(|error| error.to_string());
     }
-    let visible_rows = working_agent_count.min(6) as f64;
+    let visible_rows = visible_agent_count.min(6) as f64;
     let scale_factor = list.scale_factor().map_err(|error| error.to_string())?;
     let list_size = tauri::PhysicalSize::new(
         (280.0 * scale_factor).round() as u32,

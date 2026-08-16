@@ -33,8 +33,8 @@ if (
   overlayWindow.decorations !== false ||
   overlayWindow.transparent !== true ||
   overlayWindow.skipTaskbar !== true ||
-  overlayWindow.width !== 320 ||
-  overlayWindow.height !== 320
+  overlayWindow.width !== 360 ||
+  overlayWindow.height !== 416
 ) {
   throw new Error("The pet-overlay startup window contract has changed.");
 }

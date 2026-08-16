@@ -26,13 +26,8 @@ export function AgentBubbleApp() {
 
   async function toggleExpanded() {
     const next = !expanded;
-    if (next) {
-      await api.setAgentBubbleLayout(workingAgents.length, true);
-      setExpanded(true);
-    } else {
-      setExpanded(false);
-      await api.setAgentBubbleLayout(workingAgents.length, false);
-    }
+    await api.setAgentBubbleLayout(workingAgents.length, next);
+    setExpanded(next);
   }
 
   return (
@@ -49,24 +44,42 @@ export function AgentBubbleApp() {
         <span>{workingAgents.length}</span>
         <span className="agent-bubble-chevron">{expanded ? "⌄" : "⌃"}</span>
       </button>
-      {expanded && (
-        <div className="agent-bubble-list">
-          {workingAgents.map((agent, index) => {
-            const label = agent.title || agent.agent || agent.paneId;
-            return (
-              <div
-                className="agent-bubble agent-bubble-item"
-                key={`${agent.sessionId}:${agent.paneId}`}
-                title={label}
-                style={{ "--bubble-index": Math.min(index, 6) } as React.CSSProperties}
-              >
-                <span className="agent-bubble-dot" />
-                <span className="agent-bubble-label">{label}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+    </main>
+  );
+}
+
+export function AgentBubbleListApp() {
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const workingAgents = agents.filter((agent) => agent.state === "working");
+
+  useEffect(() => {
+    const listeners = Promise.all([
+      listen<AgentInfo[]>("herdr://agents-changed", ({ payload }) => setAgents(payload)),
+      listen<boolean>("agent-bubbles://expanded", ({ payload }) => setExpanded(payload)),
+    ]);
+    void api.listAgents().then(setAgents);
+    return () => void listeners.then((dispose) => dispose.forEach((item) => item()));
+  }, []);
+
+  if (!expanded || !workingAgents.length) return null;
+
+  return (
+    <main className="agent-bubble-list-stage is-expanded">
+      {workingAgents.map((agent, index) => {
+        const label = agent.title || agent.agent || agent.paneId;
+        return (
+          <div
+            className="agent-bubble agent-bubble-item"
+            key={`${agent.sessionId}:${agent.paneId}`}
+            title={label}
+            style={{ "--bubble-index": Math.min(index, 6) } as React.CSSProperties}
+          >
+            <span className="agent-bubble-dot" />
+            <span className="agent-bubble-label">{label}</span>
+          </div>
+        );
+      })}
     </main>
   );
 }

@@ -311,40 +311,42 @@ async fn set_agent_bubble_layout(
     working_agent_count: usize,
     expanded: bool,
 ) -> Result<(), String> {
-    let window = app
+    let summary = app
         .get_webview_window("agent-bubbles")
         .ok_or("agent bubble window not found")?;
+    let list = app
+        .get_webview_window("agent-list")
+        .ok_or("agent list window not found")?;
     if working_agent_count == 0 {
-        return window.hide().map_err(|error| error.to_string());
+        let _ = list.hide();
+        return summary.hide().map_err(|error| error.to_string());
     }
     let visible_rows = working_agent_count.min(6) as f64;
-    // Keep the width stable while toggling. Resizing WebView2 in both axes at
-    // once causes a noticeably larger compositor flash on Windows.
-    let width = 224.0;
-    let height = if expanded {
-        48.0 + visible_rows * 37.0
-    } else {
-        48.0
-    };
-    let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
-    let new_size = tauri::PhysicalSize::new(
-        (width * scale_factor).round() as u32,
-        (height * scale_factor).round() as u32,
+    let scale_factor = list.scale_factor().map_err(|error| error.to_string())?;
+    let list_size = tauri::PhysicalSize::new(
+        (360.0 * scale_factor).round() as u32,
+        ((visible_rows * 37.0 + 8.0) * scale_factor).round() as u32,
     );
-    window
-        .set_size(new_size)
-        .map_err(|error| error.to_string())?;
-    position_agent_bubble_window_with_size(&app, new_size)?;
-    if app
+    if list.outer_size().ok() != Some(list_size) {
+        list.set_size(list_size)
+            .map_err(|error| error.to_string())?;
+    }
+    position_agent_bubble_windows_with_list_size(&app, list_size)?;
+    let pet_visible = app
         .get_webview_window("pet-overlay")
         .and_then(|pet| pet.is_visible().ok())
-        .unwrap_or(false)
-    {
-        window.show().map_err(|error| error.to_string())?;
+        .unwrap_or(false);
+    if pet_visible {
+        summary.show().map_err(|error| error.to_string())?;
     }
-    // `set_size` is queued by WebView2. Do not start the CSS reveal until the
-    // native surface has committed its new bounds.
-    tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+    if expanded && pet_visible {
+        list.show().map_err(|error| error.to_string())?;
+        app.emit_to("agent-list", "agent-bubbles://expanded", true)
+            .map_err(|error| error.to_string())?;
+    } else {
+        let _ = app.emit_to("agent-list", "agent-bubbles://expanded", false);
+        let _ = list.hide();
+    }
     Ok(())
 }
 
@@ -353,17 +355,17 @@ fn position_agent_bubble_window(app: &AppHandle) -> Result<(), String> {
     if !absolute_position_supported() {
         return Ok(());
     }
-    let bubbles = app
-        .get_webview_window("agent-bubbles")
-        .ok_or("agent bubble window not found")?;
-    let bubble_size = bubbles.outer_size().map_err(|error| error.to_string())?;
-    position_agent_bubble_window_with_size(app, bubble_size)
+    let list = app
+        .get_webview_window("agent-list")
+        .ok_or("agent list window not found")?;
+    let list_size = list.outer_size().map_err(|error| error.to_string())?;
+    position_agent_bubble_windows_with_list_size(app, list_size)
 }
 
 #[cfg(feature = "desktop")]
-fn position_agent_bubble_window_with_size(
+fn position_agent_bubble_windows_with_list_size(
     app: &AppHandle,
-    bubble_size: tauri::PhysicalSize<u32>,
+    list_size: tauri::PhysicalSize<u32>,
 ) -> Result<(), String> {
     if !absolute_position_supported() {
         return Ok(());
@@ -374,17 +376,23 @@ fn position_agent_bubble_window_with_size(
     let bubbles = app
         .get_webview_window("agent-bubbles")
         .ok_or("agent bubble window not found")?;
+    let list = app
+        .get_webview_window("agent-list")
+        .ok_or("agent list window not found")?;
     let pet_position = pet.outer_position().map_err(|error| error.to_string())?;
     let pet_size = pet.outer_size().map_err(|error| error.to_string())?;
+    let summary_size = bubbles.outer_size().map_err(|error| error.to_string())?;
     let scale_factor = pet.scale_factor().unwrap_or(1.0);
-    let position = agent_bubble_position(
-        pet_position,
-        pet_size,
-        bubble_size,
-        (6.0 * scale_factor).round() as i32,
-    );
+    let gap = (6.0 * scale_factor).round() as i32;
+    let position = agent_bubble_position(pet_position, pet_size, summary_size, gap);
     bubbles
         .set_position(position)
+        .map_err(|error| error.to_string())?;
+    let list_position = tauri::PhysicalPosition::new(
+        pet_position.x + (pet_size.width as i32 - list_size.width as i32) / 2,
+        position.y - list_size.height as i32 - gap,
+    );
+    list.set_position(list_position)
         .map_err(|error| error.to_string())
 }
 
@@ -443,6 +451,9 @@ async fn update_app_config(
         }
         if let Some(bubbles) = app.get_webview_window("agent-bubbles") {
             let _ = bubbles.set_always_on_top(config.overlay.always_on_top);
+            if let Some(list) = app.get_webview_window("agent-list") {
+                let _ = list.set_always_on_top(config.overlay.always_on_top);
+            }
             let _ = position_agent_bubble_window(&app);
         }
         if let Err(error) = overlay.set_ignore_cursor_events(config.overlay.click_through) {
@@ -1367,6 +1378,9 @@ pub fn run() {
             }
             if let Some(bubbles) = app.get_webview_window("agent-bubbles") {
                 let _ = bubbles.set_always_on_top(config.overlay.always_on_top);
+                if let Some(list) = app.get_webview_window("agent-list") {
+                    let _ = list.set_always_on_top(config.overlay.always_on_top);
+                }
             }
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(

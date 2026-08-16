@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { OverlayApp } from "./overlay/OverlayApp";
-import { AgentBubbleApp } from "./overlay/AgentBubbleApp";
+import { AgentBubbleApp, AgentBubbleListApp } from "./overlay/AgentBubbleApp";
 import { SettingsApp } from "./settings/SettingsApp";
 import "./styles/global.css";
 
@@ -13,6 +13,8 @@ async function mount() {
     ? OverlayApp
     : label === "agent-bubbles"
       ? AgentBubbleApp
+      : label === "agent-list"
+        ? AgentBubbleListApp
       : SettingsApp;
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

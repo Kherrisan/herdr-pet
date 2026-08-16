@@ -296,14 +296,58 @@ async fn persist_config_change(
 /// transform would shrink the pixels while leaving a full-size transparent
 /// webview that blocks clicks on applications underneath it.
 #[cfg(feature = "desktop")]
-fn resize_overlay_for_scale(
-    window: &tauri::WebviewWindow,
-    scale: f64,
-) -> Result<(), String> {
+fn resize_overlay_for_scale(window: &tauri::WebviewWindow, scale: f64) -> Result<(), String> {
     let edge = (320.0 * scale.clamp(0.3, 2.0)).round().max(96.0);
     window
         .set_size(tauri::LogicalSize::new(edge, edge))
         .map_err(|error| error.to_string())
+}
+
+#[cfg(feature = "desktop")]
+#[tauri::command]
+async fn set_overlay_bubble_layout(
+    app: AppHandle,
+    state: State<'_, Arc<RuntimeState>>,
+    working_agent_count: usize,
+    expanded: bool,
+) -> Result<(), String> {
+    let scale = state.config.read().await.overlay.scale;
+    let pet_edge = (320.0 * scale.clamp(0.3, 2.0)).round().max(96.0);
+    let visible_rows = working_agent_count.min(6) as f64;
+    let headroom = if working_agent_count == 0 {
+        0.0
+    } else if expanded {
+        48.0 + visible_rows * 37.0
+    } else {
+        48.0
+    };
+    let width = if expanded && working_agent_count > 0 {
+        pet_edge.max(224.0)
+    } else {
+        pet_edge
+    };
+    let height = pet_edge + headroom;
+    let window = app
+        .get_webview_window("pet-overlay")
+        .ok_or("pet overlay window not found")?;
+    let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
+    let old_size = window.outer_size().map_err(|error| error.to_string())?;
+    let old_position = window.outer_position().ok();
+    let new_size = tauri::PhysicalSize::new(
+        (width * scale_factor).round() as u32,
+        (height * scale_factor).round() as u32,
+    );
+    window
+        .set_size(new_size)
+        .map_err(|error| error.to_string())?;
+    if let Some(old_position) = old_position {
+        let x = old_position.x + (old_size.width as i32 - new_size.width as i32) / 2;
+        let y = old_position.y + old_size.height as i32 - new_size.height as i32;
+        window
+            .set_position(tauri::PhysicalPosition::new(x, y))
+            .map_err(|error| error.to_string())?;
+    }
+    Ok(())
 }
 
 #[cfg(feature = "desktop")]
@@ -1339,6 +1383,7 @@ pub fn run() {
             complete_runtime_self_test,
             open_settings,
             reset_overlay_position,
+            set_overlay_bubble_layout,
             inspect_avatar_project,
             inspect_avatar_project_file,
             install_avatar_project,

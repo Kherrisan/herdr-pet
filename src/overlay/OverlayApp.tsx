@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "../shared/tauri";
@@ -86,6 +86,11 @@ export function OverlayApp() {
     if (!workingAgents.length) setAgentsExpanded(false);
   }, [workingAgents.length]);
 
+  useEffect(() => {
+    if (!config) return;
+    void api.setOverlayBubbleLayout(workingAgents.length, agentsExpanded);
+  }, [agentsExpanded, config?.overlay.scale, workingAgents.length]);
+
   async function beginDrag(event: React.PointerEvent) {
     if (event.button !== 0 || config?.overlay.locked || config?.overlay.clickThrough) return;
     event.preventDefault();
@@ -108,7 +113,8 @@ export function OverlayApp() {
       onDoubleClick={() => void api.openSettings()}
       style={{
         opacity: config.overlay.opacity,
-      }}
+        "--pet-edge": `${Math.round(320 * config.overlay.scale)}px`,
+      } as CSSProperties}
     >
       {workingAgents.length > 0 && (
         <div className={`agent-bubbles${agentsExpanded ? " is-expanded" : ""}`}>
@@ -121,7 +127,7 @@ export function OverlayApp() {
             onClick={() => setAgentsExpanded((expanded) => !expanded)}
           >
             <span className="agent-bubble-dot" />
-            {workingAgents.length} {workingAgents.length === 1 ? "agent" : "agents"} working
+            <span>{workingAgents.length}</span>
             <span className="agent-bubble-chevron">{agentsExpanded ? "⌄" : "⌃"}</span>
           </button>
           {agentsExpanded && (
@@ -139,8 +145,9 @@ export function OverlayApp() {
           )}
         </div>
       )}
-      {activeIntent?.bubble && <div className="speech-bubble">{activeIntent.bubble}</div>}
-      <AvatarLabPet
+      <div className="pet-visual">
+        {activeIntent?.bubble && <div className="speech-bubble">{activeIntent.bubble}</div>}
+        <AvatarLabPet
         state={aggregate}
         animation={displayedAnimation}
         payload={activeAvatar.project.payload}
@@ -168,8 +175,9 @@ export function OverlayApp() {
             error: details.svgElements > 0 ? null : "官方运行时没有生成 SVG",
           });
         }}
-      />
-      {activeAvatar.error && <div className="avatar-runtime-warning">已回退到内置角色</div>}
+        />
+        {activeAvatar.error && <div className="avatar-runtime-warning">已回退到内置角色</div>}
+      </div>
     </main>
   );
 }

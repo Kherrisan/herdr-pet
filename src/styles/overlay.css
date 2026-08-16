@@ -103,7 +103,6 @@ button.agent-bubble { cursor: pointer; }
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 12px 12px rgb(20 26 22 / 20%));
   pointer-events: none;
 }
 
@@ -112,7 +111,7 @@ button.agent-bubble { cursor: pointer; }
 .avatar-runtime-warning { pointer-events: none; }
 
 .avatar-lab-pet[data-state="offline"] {
-  filter: grayscale(.72) opacity(.78) drop-shadow(0 10px 10px rgb(20 26 22 / 12%));
+  filter: grayscale(.72) opacity(.78);
 }
 
 .avatar-lab-pet__error {

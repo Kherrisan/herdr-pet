@@ -13,6 +13,44 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; background: tra
 }
 
 .pet-stage:active { cursor: grabbing; }
+
+.agent-bubbles {
+  position: absolute;
+  z-index: 4;
+  bottom: 78%;
+  left: 50%;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 6px;
+  max-width: 92%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+
+.agent-bubble {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 220px;
+  border: 1px solid rgb(45 61 49 / 20%);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #26342a;
+  background: rgb(250 255 247 / 94%);
+  box-shadow: 0 5px 16px rgb(24 31 26 / 18%);
+  font: 600 12px/1.1 system-ui, sans-serif;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+
+button.agent-bubble { cursor: pointer; }
+.agent-bubble-summary { border-color: rgb(65 126 78 / 35%); }
+.agent-bubble-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #43a85d; box-shadow: 0 0 0 3px rgb(67 168 93 / 16%); }
+.agent-bubble-chevron { margin-left: 2px; font-size: 14px; line-height: 8px; }
+.agent-bubble-list { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.agent-bubble-item { max-width: 180px; font-weight: 500; }
+.agent-bubble-label { overflow: hidden; text-overflow: ellipsis; }
 .avatar-lab-pet {
   display: block;
   width: 100%;

@@ -305,34 +305,25 @@ fn resize_overlay_for_scale(window: &tauri::WebviewWindow, scale: f64) -> Result
 
 #[cfg(feature = "desktop")]
 #[tauri::command]
-async fn set_overlay_bubble_layout(
+async fn set_agent_bubble_layout(
     app: AppHandle,
-    state: State<'_, Arc<RuntimeState>>,
     working_agent_count: usize,
     expanded: bool,
 ) -> Result<(), String> {
-    let scale = state.config.read().await.overlay.scale;
-    let pet_edge = (320.0 * scale.clamp(0.3, 2.0)).round().max(96.0);
+    let window = app
+        .get_webview_window("agent-bubbles")
+        .ok_or("agent bubble window not found")?;
+    if working_agent_count == 0 {
+        return window.hide().map_err(|error| error.to_string());
+    }
     let visible_rows = working_agent_count.min(6) as f64;
-    let headroom = if working_agent_count == 0 {
-        0.0
-    } else if expanded {
+    let width = if expanded { 224.0 } else { 60.0 };
+    let height = if expanded {
         48.0 + visible_rows * 37.0
     } else {
         48.0
     };
-    let width = if expanded && working_agent_count > 0 {
-        pet_edge.max(224.0)
-    } else {
-        pet_edge
-    };
-    let height = pet_edge + headroom;
-    let window = app
-        .get_webview_window("pet-overlay")
-        .ok_or("pet overlay window not found")?;
     let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
-    let old_size = window.outer_size().map_err(|error| error.to_string())?;
-    let old_position = window.outer_position().ok();
     let new_size = tauri::PhysicalSize::new(
         (width * scale_factor).round() as u32,
         (height * scale_factor).round() as u32,
@@ -340,14 +331,37 @@ async fn set_overlay_bubble_layout(
     window
         .set_size(new_size)
         .map_err(|error| error.to_string())?;
-    if let Some(old_position) = old_position {
-        let x = old_position.x + (old_size.width as i32 - new_size.width as i32) / 2;
-        let y = old_position.y + old_size.height as i32 - new_size.height as i32;
-        window
-            .set_position(tauri::PhysicalPosition::new(x, y))
-            .map_err(|error| error.to_string())?;
+    position_agent_bubble_window(&app)?;
+    if app
+        .get_webview_window("pet-overlay")
+        .and_then(|pet| pet.is_visible().ok())
+        .unwrap_or(false)
+    {
+        window.show().map_err(|error| error.to_string())?;
     }
     Ok(())
+}
+
+#[cfg(feature = "desktop")]
+fn position_agent_bubble_window(app: &AppHandle) -> Result<(), String> {
+    if !absolute_position_supported() {
+        return Ok(());
+    }
+    let pet = app
+        .get_webview_window("pet-overlay")
+        .ok_or("pet overlay window not found")?;
+    let bubbles = app
+        .get_webview_window("agent-bubbles")
+        .ok_or("agent bubble window not found")?;
+    let pet_position = pet.outer_position().map_err(|error| error.to_string())?;
+    let pet_size = pet.outer_size().map_err(|error| error.to_string())?;
+    let bubble_size = bubbles.outer_size().map_err(|error| error.to_string())?;
+    let scale_factor = pet.scale_factor().unwrap_or(1.0);
+    let x = pet_position.x + (pet_size.width as i32 - bubble_size.width as i32) / 2;
+    let y = pet_position.y - bubble_size.height as i32 - (6.0 * scale_factor).round() as i32;
+    bubbles
+        .set_position(tauri::PhysicalPosition::new(x, y))
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(feature = "desktop")]
@@ -389,6 +403,10 @@ async fn update_app_config(
         if let Err(error) = overlay.set_always_on_top(config.overlay.always_on_top) {
             rollback_shortcut();
             return Err(error.to_string());
+        }
+        if let Some(bubbles) = app.get_webview_window("agent-bubbles") {
+            let _ = bubbles.set_always_on_top(config.overlay.always_on_top);
+            let _ = position_agent_bubble_window(&app);
         }
         if let Err(error) = overlay.set_ignore_cursor_events(config.overlay.click_through) {
             let _ = overlay.set_always_on_top(previous.overlay.always_on_top);
@@ -1310,6 +1328,9 @@ pub fn run() {
                     }
                 }
             }
+            if let Some(bubbles) = app.get_webview_window("agent-bubbles") {
+                let _ = bubbles.set_always_on_top(config.overlay.always_on_top);
+            }
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(
                 state.clone().run_runtime_emitter(handle.clone()),
@@ -1329,6 +1350,7 @@ pub fn run() {
                 && let WindowEvent::Moved(position) = event
             {
                 let app = window.app_handle().clone();
+                let _ = position_agent_bubble_window(&app);
                 let state = app.state::<Arc<RuntimeState>>().inner().clone();
                 let original = OverlayPosition {
                     x: position.x,
@@ -1383,7 +1405,7 @@ pub fn run() {
             complete_runtime_self_test,
             open_settings,
             reset_overlay_position,
-            set_overlay_bubble_layout,
+            set_agent_bubble_layout,
             inspect_avatar_project,
             inspect_avatar_project_file,
             install_avatar_project,

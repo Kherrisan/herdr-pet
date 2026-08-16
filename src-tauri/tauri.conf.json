@@ -27,6 +27,20 @@
         "skipTaskbar": true,
         "shadow": false,
         "center": true
+      },
+      {
+        "label": "agent-bubbles",
+        "title": "Herdr Pet Agents",
+        "url": "index.html",
+        "width": 60,
+        "height": 48,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false
       }
     ],
     "security": {

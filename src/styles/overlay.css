@@ -74,8 +74,31 @@ button.agent-bubble { cursor: pointer; }
 .agent-bubble-chevron { margin-left: 2px; font-size: 14px; line-height: 8px; }
 .agent-bubble-list { display: flex; max-height: 217px; flex-direction: column; align-items: center; gap: 5px; overflow-y: auto; scrollbar-width: none; }
 .agent-bubble-list::-webkit-scrollbar { display: none; }
+.agent-bubble-stage.is-expanded .agent-bubble-list {
+  transform-origin: bottom center;
+  animation: agent-list-expand 220ms cubic-bezier(.2, .8, .2, 1) both;
+}
 .agent-bubble-item { max-width: 180px; font-weight: 500; }
+.agent-bubble-stage.is-expanded .agent-bubble-item {
+  animation: agent-bubble-rise 190ms cubic-bezier(.2, .8, .2, 1) both;
+  animation-delay: calc(35ms + var(--bubble-index) * 28ms);
+}
 .agent-bubble-label { overflow: hidden; text-overflow: ellipsis; }
+
+@keyframes agent-list-expand {
+  from { opacity: 0; transform: translateY(14px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes agent-bubble-rise {
+  from { opacity: 0; transform: translateY(9px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-bubble-stage.is-expanded .agent-bubble-list,
+  .agent-bubble-stage.is-expanded .agent-bubble-item { animation: none; }
+}
 .avatar-lab-pet {
   display: block;
   width: 100%;

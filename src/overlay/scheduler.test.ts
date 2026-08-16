@@ -28,6 +28,22 @@ describe("AnimationScheduler", () => {
     expect(snapshot.queue).toHaveLength(0);
   });
 
+  it("merges later completions into a celebration that is still playing", () => {
+    const scheduler = new AnimationScheduler({ completionMergeMs: 1_000 });
+    scheduler.setAggregate("working", 0);
+    scheduler.enqueue(intent(1, "turn_completed", 70, "A"), 100);
+    const snapshot = scheduler.enqueue(
+      intent(2, "turn_completed_background", 70, "B"),
+      1_500,
+    );
+
+    expect(snapshot.active?.intent.id).toBe(1);
+    expect(snapshot.active?.intent.count).toBe(2);
+    expect(snapshot.active?.receivedAt).toBe(100);
+    expect(snapshot.active?.startedAt).toBe(100);
+    expect(snapshot.queue).toHaveLength(0);
+  });
+
   it("interrupts celebrate for attention and resumes current aggregate afterward", () => {
     const scheduler = new AnimationScheduler();
     scheduler.setAggregate("working", 0);

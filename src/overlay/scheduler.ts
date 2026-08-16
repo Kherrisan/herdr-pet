@@ -175,8 +175,7 @@ export class AnimationScheduler {
   private mergeIntoCompletion(intent: PetIntent, now: number): boolean {
     if (
       this.active &&
-      isCompletion(this.active.intent) &&
-      now - this.active.receivedAt <= this.completionMergeMs
+      isCompletion(this.active.intent)
     ) {
       this.active = mergeCompletion(this.active, intent);
       return true;

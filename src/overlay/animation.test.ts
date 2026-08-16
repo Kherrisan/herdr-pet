@@ -12,10 +12,11 @@ import {
 } from "./animation";
 
 describe("overlay animation mapping", () => {
-  it("uses a low frame rate only for non-critical persistent states", () => {
+  it("keeps visible persistent animation smooth and throttles only sleeping", () => {
     expect(frameRateForState("sleeping", 60, false)).toBe(5);
-    expect(frameRateForState("idle", 30, false)).toBe(8);
-    expect(frameRateForState("offline", 60, false)).toBe(8);
+    expect(frameRateForState("idle", 30, false)).toBe(30);
+    expect(frameRateForState("idle", 60, false)).toBe(60);
+    expect(frameRateForState("offline", 60, false)).toBe(60);
     expect(frameRateForState("working", 30, false)).toBe(30);
     expect(frameRateForState("needs_attention", 60, false)).toBe(60);
     expect(frameRateForState("idle", 60, true)).toBe(60);

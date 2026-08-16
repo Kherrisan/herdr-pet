@@ -5,9 +5,8 @@ export function frameRateForState(
   configuredFps: 30 | 60,
   transient: boolean,
 ): number {
-  if (transient || state === "working" || state === "needs_attention") return configuredFps;
-  if (state === "sleeping") return Math.min(5, configuredFps);
-  return Math.min(8, configuredFps);
+  if (!transient && state === "sleeping") return Math.min(5, configuredFps);
+  return configuredFps;
 }
 
 export const TRANSIENT_ANIMATIONS: Record<PetIntentKind, string> = {

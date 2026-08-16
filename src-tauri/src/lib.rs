@@ -1040,7 +1040,9 @@ fn show_settings(app: &AppHandle) -> Result<(), String> {
             .map_err(|error| error.to_string())?
     };
     settings.show().map_err(|error| error.to_string())?;
-    settings.set_focus().map_err(|error| error.to_string())
+    settings.set_focus().map_err(|error| error.to_string())?;
+    let _ = settings.emit("settings://visibility-changed", true);
+    Ok(())
 }
 
 #[cfg(feature = "desktop")]
@@ -1411,6 +1413,7 @@ pub fn run() {
                 && let WindowEvent::CloseRequested { api, .. } = event
             {
                 api.prevent_close();
+                let _ = window.emit("settings://visibility-changed", false);
                 let _ = window.hide();
             }
             if window.label() == "pet-overlay"

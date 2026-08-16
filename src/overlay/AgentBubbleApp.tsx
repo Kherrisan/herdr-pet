@@ -132,7 +132,7 @@ export function AgentBubbleApp() {
     void api.setAgentBubbleLayout(visibleAgents.length, expanded, summaryVisible);
   }, [expanded, summaryVisible, visibleAgents.length]);
 
-  if (!visibleAgents.length) return null;
+  if (!visibleAgents.length || !summaryVisible) return null;
 
   async function toggleExpanded() {
     const next = !expanded;

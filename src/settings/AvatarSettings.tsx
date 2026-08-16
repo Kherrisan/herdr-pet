@@ -21,6 +21,7 @@ interface AvatarSettingsProps {
   onConfig: (config: AppConfig) => void;
   onPreview: (animation: string) => void;
   language: AppLanguage;
+  paused?: boolean;
 }
 
 interface PendingImport {
@@ -40,6 +41,7 @@ export function AvatarSettings({
   onConfig,
   onPreview,
   language,
+  paused = false,
 }: AvatarSettingsProps) {
   const t = (text: string) => translate(language, text);
   const [installations, setInstallations] = useState<AvatarInstallation[]>([]);
@@ -299,6 +301,7 @@ export function AvatarSettings({
                   state="idle"
                   animation={pendingPreview.animationKeys.includes("idle") ? "idle" : pendingPreview.animationKeys[0] ?? "idle"}
                   payload={pendingPreview.payload}
+                  paused={paused}
                 />
                 <span>{t("实时预览")}: {pendingPreview.avatarName}</span>
               </div>

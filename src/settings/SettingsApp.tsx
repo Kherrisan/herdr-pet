@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "../shared/tauri";
 import type { AggregateState, AgentInfo, AppConfig, ConnectionStatus, DiagnosticReport } from "../shared/types";
 import { AvatarLabPet } from "../avatar-lab/AvatarLabPet";
@@ -26,6 +27,7 @@ export function SettingsApp() {
   const [diagnostics, setDiagnostics] = useState<DiagnosticReport>();
   const [diagnosticExport, setDiagnosticExport] = useState<string>();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [windowVisible, setWindowVisible] = useState(true);
   const activeAvatar = useActiveAvatar(config?.avatar);
   const language = config?.language ?? "zh-CN";
   const t = (text: string) => translate(language, text);
@@ -35,6 +37,7 @@ export function SettingsApp() {
   }, [language]);
 
   useEffect(() => {
+    void getCurrentWindow().isVisible().then(setWindowVisible);
     void Promise.all([api.getConfig(), api.getConnectionStatus(), api.listAgents()]).then(
       ([nextConfig, nextStatus, nextAgents]) => {
         setConfig(nextConfig);
@@ -53,6 +56,7 @@ export function SettingsApp() {
         void api.getDiagnostics().then(setDiagnostics);
       }),
       listen<AppConfig>("config://changed", ({ payload }) => setConfig(payload)),
+      listen<boolean>("settings://visibility-changed", ({ payload }) => setWindowVisible(payload)),
     ]);
     return () => {
       void unlisteners.then((items) => items.forEach((unlisten) => unlisten()));
@@ -133,7 +137,7 @@ export function SettingsApp() {
             fps={config.overlay.fps}
             playback={previewPlayback}
             loop={previewLoop}
-            pauseWhenHidden={false}
+            paused={!windowVisible}
             onAnimationEnd={() => {
               if (!previewLoop) setPreviewAnimation(undefined);
             }}
@@ -236,6 +240,7 @@ export function SettingsApp() {
             onConfig={setConfig}
             onPreview={preview}
             language={language}
+            paused={!windowVisible}
           />
         </div>
       )}

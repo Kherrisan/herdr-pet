@@ -30,8 +30,8 @@ export const api = {
   }) => invoke<void>("complete_runtime_self_test", result),
   openSettings: () => invoke<void>("open_settings"),
   resetOverlayPosition: () => invoke<void>("reset_overlay_position"),
-  setAgentBubbleLayout: (workingAgentCount: number, expanded: boolean) =>
-    invoke<void>("set_agent_bubble_layout", { workingAgentCount, expanded }),
+  setAgentBubbleLayout: (workingAgentCount: number, expanded: boolean, summaryVisible = true) =>
+    invoke<void>("set_agent_bubble_layout", { workingAgentCount, expanded, summaryVisible }),
   inspectAvatarProject: (source: string) =>
     invoke<AvatarProjectInspection>("inspect_avatar_project", { source }),
   inspectAvatarProjectFile: (path: string) =>

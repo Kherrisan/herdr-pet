@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "../shared/tauri";
 import type { AggregateState, AppConfig, PetIntent } from "../shared/types";
@@ -94,6 +94,8 @@ export function OverlayApp() {
     <main
       className="pet-stage"
       onPointerDown={(event) => void beginDrag(event)}
+      onPointerEnter={() => void emit("agent-bubbles://interaction", { source: "pet", hovered: true })}
+      onPointerLeave={() => void emit("agent-bubbles://interaction", { source: "pet", hovered: false })}
       onDoubleClick={() => void api.openSettings()}
       style={{
         opacity: config.overlay.opacity,

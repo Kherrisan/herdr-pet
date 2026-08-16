@@ -310,6 +310,7 @@ async fn set_agent_bubble_layout(
     app: AppHandle,
     working_agent_count: usize,
     expanded: bool,
+    summary_visible: bool,
 ) -> Result<(), String> {
     let summary = app
         .get_webview_window("agent-bubbles")
@@ -336,10 +337,12 @@ async fn set_agent_bubble_layout(
         .get_webview_window("pet-overlay")
         .and_then(|pet| pet.is_visible().ok())
         .unwrap_or(false);
-    if pet_visible {
+    if pet_visible && summary_visible {
         summary.show().map_err(|error| error.to_string())?;
+    } else {
+        let _ = summary.hide();
     }
-    if expanded && pet_visible {
+    if expanded && pet_visible && summary_visible {
         list.show().map_err(|error| error.to_string())?;
         app.emit_to("agent-list", "agent-bubbles://expanded", true)
             .map_err(|error| error.to_string())?;

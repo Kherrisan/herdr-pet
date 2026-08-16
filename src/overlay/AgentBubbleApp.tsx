@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import type { AgentInfo } from "../shared/types";
 import { api } from "../shared/tauri";
 import "../styles/overlay.css";
 
 const COMPLETED_BUBBLE_DURATION_MS = 4_000;
+const BUBBLE_HIDE_DELAY_MS = 3_000;
+
+type BubbleInteraction = {
+  source: "pet" | "summary" | "list";
+  hovered: boolean;
+};
 
 type VisibleAgent = AgentInfo & { recentlyCompleted: boolean };
 
@@ -57,24 +63,76 @@ function useVisibleAgents(): VisibleAgent[] {
 
 export function AgentBubbleApp() {
   const [expanded, setExpanded] = useState(false);
+  const [summaryVisible, setSummaryVisible] = useState(true);
+  const expandedRef = useRef(false);
+  const hoveredSources = useRef(new Set<BubbleInteraction["source"]>());
+  const hideTimer = useRef<number | undefined>(undefined);
   const visibleAgents = useVisibleAgents();
   const workingCount = visibleAgents.filter((agent) => !agent.recentlyCompleted).length;
 
+  function cancelHide() {
+    if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current);
+    hideTimer.current = undefined;
+  }
+
+  function updateInteraction({ source, hovered }: BubbleInteraction) {
+    if (hovered) {
+      hoveredSources.current.add(source);
+      cancelHide();
+      setSummaryVisible(true);
+      return;
+    }
+    hoveredSources.current.delete(source);
+    cancelHide();
+    if (hoveredSources.current.size || expandedRef.current) return;
+    hideTimer.current = window.setTimeout(() => {
+      if (expandedRef.current) return;
+      setExpanded(false);
+      setSummaryVisible(false);
+      hideTimer.current = undefined;
+    }, BUBBLE_HIDE_DELAY_MS);
+  }
+
   useEffect(() => {
-    if (!visibleAgents.length) setExpanded(false);
-    void api.setAgentBubbleLayout(visibleAgents.length, expanded);
-  }, [expanded, visibleAgents.length]);
+    const unlisten = listen<BubbleInteraction>("agent-bubbles://interaction", ({ payload }) => {
+      updateInteraction(payload);
+    });
+    return () => {
+      void unlisten.then((dispose) => dispose());
+      cancelHide();
+    };
+  }, []);
+
+  useEffect(() => {
+    expandedRef.current = expanded;
+    if (expanded) cancelHide();
+  }, [expanded]);
+
+  useEffect(() => {
+    if (!visibleAgents.length) {
+      expandedRef.current = false;
+      setExpanded(false);
+      setSummaryVisible(true);
+    }
+    void api.setAgentBubbleLayout(visibleAgents.length, expanded, summaryVisible);
+  }, [expanded, summaryVisible, visibleAgents.length]);
 
   if (!visibleAgents.length) return null;
 
   async function toggleExpanded() {
     const next = !expanded;
-    await api.setAgentBubbleLayout(visibleAgents.length, next);
+    expandedRef.current = next;
+    if (next) cancelHide();
+    await api.setAgentBubbleLayout(visibleAgents.length, next, true);
     setExpanded(next);
   }
 
   return (
-    <main className={`agent-bubble-stage${expanded ? " is-expanded" : ""}`}>
+    <main
+      className={`agent-bubble-stage${expanded ? " is-expanded" : ""}`}
+      onPointerEnter={() => void emit("agent-bubbles://interaction", { source: "summary", hovered: true })}
+      onPointerLeave={() => void emit("agent-bubbles://interaction", { source: "summary", hovered: false })}
+    >
       <button
         className="agent-bubble agent-bubble-summary"
         type="button"
@@ -105,7 +163,11 @@ export function AgentBubbleListApp() {
   if (!expanded || !visibleAgents.length) return null;
 
   return (
-    <main className="agent-bubble-list-stage is-expanded">
+    <main
+      className="agent-bubble-list-stage is-expanded"
+      onPointerEnter={() => void emit("agent-bubbles://interaction", { source: "list", hovered: true })}
+      onPointerLeave={() => void emit("agent-bubbles://interaction", { source: "list", hovered: false })}
+    >
       {visibleAgents.map((agent, index) => {
         const workspaceLabel = agent.workspaceLabel || agent.title || agent.workspaceId;
         const agentLabel = agent.agent || agent.paneId;

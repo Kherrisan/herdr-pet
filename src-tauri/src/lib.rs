@@ -317,7 +317,9 @@ async fn set_agent_bubble_layout(
         return window.hide().map_err(|error| error.to_string());
     }
     let visible_rows = working_agent_count.min(6) as f64;
-    let width = if expanded { 224.0 } else { 60.0 };
+    // Keep the width stable while toggling. Resizing WebView2 in both axes at
+    // once causes a noticeably larger compositor flash on Windows.
+    let width = 224.0;
     let height = if expanded {
         48.0 + visible_rows * 37.0
     } else {
@@ -331,7 +333,7 @@ async fn set_agent_bubble_layout(
     window
         .set_size(new_size)
         .map_err(|error| error.to_string())?;
-    position_agent_bubble_window(&app)?;
+    position_agent_bubble_window_with_size(&app, new_size)?;
     if app
         .get_webview_window("pet-overlay")
         .and_then(|pet| pet.is_visible().ok())
@@ -339,11 +341,29 @@ async fn set_agent_bubble_layout(
     {
         window.show().map_err(|error| error.to_string())?;
     }
+    // `set_size` is queued by WebView2. Do not start the CSS reveal until the
+    // native surface has committed its new bounds.
+    tokio::time::sleep(std::time::Duration::from_millis(40)).await;
     Ok(())
 }
 
 #[cfg(feature = "desktop")]
 fn position_agent_bubble_window(app: &AppHandle) -> Result<(), String> {
+    if !absolute_position_supported() {
+        return Ok(());
+    }
+    let bubbles = app
+        .get_webview_window("agent-bubbles")
+        .ok_or("agent bubble window not found")?;
+    let bubble_size = bubbles.outer_size().map_err(|error| error.to_string())?;
+    position_agent_bubble_window_with_size(app, bubble_size)
+}
+
+#[cfg(feature = "desktop")]
+fn position_agent_bubble_window_with_size(
+    app: &AppHandle,
+    bubble_size: tauri::PhysicalSize<u32>,
+) -> Result<(), String> {
     if !absolute_position_supported() {
         return Ok(());
     }
@@ -355,13 +375,29 @@ fn position_agent_bubble_window(app: &AppHandle) -> Result<(), String> {
         .ok_or("agent bubble window not found")?;
     let pet_position = pet.outer_position().map_err(|error| error.to_string())?;
     let pet_size = pet.outer_size().map_err(|error| error.to_string())?;
-    let bubble_size = bubbles.outer_size().map_err(|error| error.to_string())?;
     let scale_factor = pet.scale_factor().unwrap_or(1.0);
-    let x = pet_position.x + (pet_size.width as i32 - bubble_size.width as i32) / 2;
-    let y = pet_position.y - bubble_size.height as i32 - (6.0 * scale_factor).round() as i32;
+    let position = agent_bubble_position(
+        pet_position,
+        pet_size,
+        bubble_size,
+        (6.0 * scale_factor).round() as i32,
+    );
     bubbles
-        .set_position(tauri::PhysicalPosition::new(x, y))
+        .set_position(position)
         .map_err(|error| error.to_string())
+}
+
+#[cfg(feature = "desktop")]
+fn agent_bubble_position(
+    pet_position: tauri::PhysicalPosition<i32>,
+    pet_size: tauri::PhysicalSize<u32>,
+    bubble_size: tauri::PhysicalSize<u32>,
+    gap: i32,
+) -> tauri::PhysicalPosition<i32> {
+    tauri::PhysicalPosition::new(
+        pet_position.x + (pet_size.width as i32 - bubble_size.width as i32) / 2,
+        pet_position.y - bubble_size.height as i32 - gap,
+    )
 }
 
 #[cfg(feature = "desktop")]
@@ -1506,8 +1542,8 @@ mod runtime_self_test_tests {
 #[cfg(all(test, feature = "desktop"))]
 mod window_geometry_tests {
     use super::{
-        MonitorGeometry, position_is_visible_in, resolve_saved_position_in, snapped_position_in,
-        stored_position_in,
+        MonitorGeometry, agent_bubble_position, position_is_visible_in, resolve_saved_position_in,
+        snapped_position_in, stored_position_in,
     };
     use crate::config::OverlayPosition;
 
@@ -1520,6 +1556,16 @@ mod window_geometry_tests {
             height: 1_440,
             scale: 2.0,
         }
+    }
+
+    #[test]
+    fn agent_bubbles_end_above_the_pet_without_overlapping_it() {
+        let pet_position = tauri::PhysicalPosition::new(800, 600);
+        let pet_size = tauri::PhysicalSize::new(192, 192);
+        let bubble_size = tauri::PhysicalSize::new(448, 170);
+        let position = agent_bubble_position(pet_position, pet_size, bubble_size, 12);
+        assert_eq!(position.x, 672);
+        assert_eq!(position.y + bubble_size.height as i32 + 12, pet_position.y);
     }
 
     #[test]

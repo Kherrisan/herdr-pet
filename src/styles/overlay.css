@@ -76,23 +76,23 @@ button.agent-bubble { cursor: pointer; }
 .agent-bubble-list::-webkit-scrollbar { display: none; }
 .agent-bubble-stage.is-expanded .agent-bubble-list {
   transform-origin: bottom center;
-  animation: agent-list-expand 220ms cubic-bezier(.2, .8, .2, 1) both;
+  animation: agent-list-expand 280ms cubic-bezier(.16, 1, .3, 1) both;
 }
 .agent-bubble-item { max-width: 180px; font-weight: 500; }
 .agent-bubble-stage.is-expanded .agent-bubble-item {
-  animation: agent-bubble-rise 190ms cubic-bezier(.2, .8, .2, 1) both;
-  animation-delay: calc(35ms + var(--bubble-index) * 28ms);
+  animation: agent-bubble-rise 220ms cubic-bezier(.16, 1, .3, 1) both;
+  animation-delay: calc(25ms + var(--bubble-index) * 30ms);
 }
 .agent-bubble-label { overflow: hidden; text-overflow: ellipsis; }
 
 @keyframes agent-list-expand {
-  from { opacity: 0; transform: translateY(14px) scale(.94); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; clip-path: inset(100% 0 0 round 999px); transform: translateY(8px); }
+  to { opacity: 1; clip-path: inset(0 0 0 round 999px); transform: translateY(0); }
 }
 
 @keyframes agent-bubble-rise {
-  from { opacity: 0; transform: translateY(9px) scale(.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {

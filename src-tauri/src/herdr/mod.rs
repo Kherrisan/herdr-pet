@@ -104,15 +104,22 @@ async fn connect_and_subscribe(
         ));
     }
     let observation = state.config.read().await.herdr.observation.clone();
+    let snapshot = snapshot.snapshot;
+    let workspace_labels = snapshot
+        .workspaces
+        .into_iter()
+        .map(|workspace| (workspace.workspace_id, workspace.label))
+        .collect::<std::collections::HashMap<_, _>>();
     let agents = snapshot
-        .snapshot
         .agents
         .into_iter()
-        .map(|agent| agent.into_agent_info(endpoint.session_id()))
+        .map(|agent| {
+            let label = workspace_labels.get(&agent.workspace_id).cloned();
+            agent.into_agent_info(endpoint.session_id(), label)
+        })
         .filter(|agent| observation.includes(&agent.workspace_id, &agent.pane_id))
         .collect::<Vec<_>>();
     let pane_ids = snapshot
-        .snapshot
         .panes
         .into_iter()
         .map(|pane| pane.id)
@@ -189,6 +196,7 @@ async fn connect_and_subscribe(
                 let agent = AgentInfo {
                     session_id: endpoint.session_id().to_string(),
                     workspace_id: data.workspace_id,
+                    workspace_label: None,
                     pane_id: data.pane_id,
                     agent: data.display_agent.or(data.agent),
                     title: data.title,

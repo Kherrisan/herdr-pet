@@ -67,7 +67,9 @@ export function AgentBubbleListApp() {
   return (
     <main className="agent-bubble-list-stage is-expanded">
       {workingAgents.map((agent, index) => {
-        const label = agent.title || agent.agent || agent.paneId;
+        const label = agent.workspaceLabel
+          ? `${agent.workspaceLabel}${agent.agent ? ` · ${agent.agent}` : ""}`
+          : agent.title || agent.agent || agent.paneId;
         return (
           <div
             className="agent-bubble agent-bubble-item"

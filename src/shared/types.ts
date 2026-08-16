@@ -32,6 +32,7 @@ export interface PetIntent {
 export interface AgentInfo {
   sessionId: string;
   workspaceId: string;
+  workspaceLabel?: string;
   paneId: string;
   agent?: string;
   title?: string;

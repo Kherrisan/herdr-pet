@@ -42,6 +42,7 @@ impl IntentFactory {
         let agent = AgentInfo {
             session_id: "topology".into(),
             workspace_id: String::new(),
+            workspace_label: None,
             pane_id: pane_id.into(),
             agent: None,
             title: None,
@@ -179,6 +180,7 @@ mod tests {
         AgentInfo {
             session_id: "default".into(),
             workspace_id: "w1".into(),
+            workspace_label: Some("host: project".into()),
             pane_id: "p1".into(),
             agent: Some("Codex".into()),
             title: None,

@@ -18,6 +18,7 @@ pub enum AgentState {
 pub struct AgentInfo {
     pub session_id: String,
     pub workspace_id: String,
+    pub workspace_label: Option<String>,
     pub pane_id: String,
     pub agent: Option<String>,
     pub title: Option<String>,
@@ -57,6 +58,13 @@ impl AgentCache {
 
     pub fn update(&mut self, next: AgentInfo) -> Option<TransitionKind> {
         let key = cache_key(&next.session_id, &next.pane_id);
+        let mut next = next;
+        if next.workspace_label.is_none() {
+            next.workspace_label = self
+                .agents
+                .get(&key)
+                .and_then(|previous| previous.workspace_label.clone());
+        }
         let transition = self
             .agents
             .get(&key)
@@ -132,6 +140,7 @@ mod tests {
         AgentInfo {
             session_id: "default".into(),
             workspace_id: "w1".into(),
+            workspace_label: Some("host: project".into()),
             pane_id: pane.into(),
             agent: Some("codex".into()),
             title: None,
@@ -194,5 +203,18 @@ mod tests {
         cache.update(agent("p1", AgentState::Blocked));
         assert_eq!(cache.aggregate_quiet(true), AggregateState::NeedsAttention);
         assert_eq!(cache.aggregate_quiet(false), AggregateState::Offline);
+    }
+
+    #[test]
+    fn status_updates_keep_the_workspace_display_label() {
+        let mut cache = AgentCache::default();
+        cache.update(agent("p1", AgentState::Idle));
+        let mut update = agent("p1", AgentState::Working);
+        update.workspace_label = None;
+        cache.update(update);
+        assert_eq!(
+            cache.list()[0].workspace_label.as_deref(),
+            Some("host: project")
+        );
     }
 }

@@ -80,6 +80,14 @@ pub struct Snapshot {
     pub panes: Vec<PaneRecord>,
     #[serde(default)]
     pub agents: Vec<AgentRecord>,
+    #[serde(default)]
+    pub workspaces: Vec<WorkspaceRecord>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceRecord {
+    pub workspace_id: String,
+    pub label: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -102,10 +110,15 @@ pub struct AgentRecord {
 }
 
 impl AgentRecord {
-    pub fn into_agent_info(self, session_id: &str) -> crate::agents::AgentInfo {
+    pub fn into_agent_info(
+        self,
+        session_id: &str,
+        workspace_label: Option<String>,
+    ) -> crate::agents::AgentInfo {
         crate::agents::AgentInfo {
             session_id: session_id.into(),
             workspace_id: self.workspace_id,
+            workspace_label,
             pane_id: self.pane_id,
             agent: self.display_agent.or(self.agent),
             title: self.title,
@@ -213,11 +226,13 @@ mod tests {
           "id":"snapshot_1",
           "result":{"type":"session_snapshot","snapshot":{
             "version":"0.8.0","protocol":20,"panes":[{"pane_id":"w1:p1"}],
+            "workspaces":[{"workspace_id":"w1","label":"host: project"}],
             "agents":[{"terminal_id":"t1","workspace_id":"w1","tab_id":"tab1","pane_id":"w1:p1","agent":"codex","agent_status":"working","focused":true,"revision":1}]
           }}
         }"#).unwrap();
         let snapshot = response.into_result().unwrap().snapshot;
         assert_eq!(snapshot.panes[0].id, "w1:p1");
+        assert_eq!(snapshot.workspaces[0].label, "host: project");
         assert_eq!(snapshot.agents[0].agent_status, AgentState::Working);
     }
 
@@ -308,6 +323,7 @@ mod tests {
                 let agent = crate::agents::AgentInfo {
                     session_id: "default".into(),
                     workspace_id: data.workspace_id,
+                    workspace_label: None,
                     pane_id: data.pane_id,
                     agent: data.display_agent.or(data.agent),
                     title: data.title,

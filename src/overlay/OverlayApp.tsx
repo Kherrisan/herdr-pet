@@ -101,7 +101,6 @@ export function OverlayApp() {
       } as CSSProperties}
     >
       <div className="pet-visual">
-        {activeIntent?.bubble && <div className="speech-bubble">{activeIntent.bubble}</div>}
         <AvatarLabPet
         state={aggregate}
         animation={displayedAnimation}

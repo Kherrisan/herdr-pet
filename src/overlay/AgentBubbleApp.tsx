@@ -67,18 +67,20 @@ export function AgentBubbleListApp() {
   return (
     <main className="agent-bubble-list-stage is-expanded">
       {workingAgents.map((agent, index) => {
-        const label = agent.workspaceLabel
-          ? `${agent.workspaceLabel}${agent.agent ? ` · ${agent.agent}` : ""}`
-          : agent.title || agent.agent || agent.paneId;
+        const workspaceLabel = agent.workspaceLabel || agent.title || agent.workspaceId;
+        const agentLabel = agent.agent || agent.paneId;
         return (
           <div
             className="agent-bubble agent-bubble-item"
             key={`${agent.sessionId}:${agent.paneId}`}
-            title={label}
+            title={`${workspaceLabel} · ${agentLabel}`}
             style={{ "--bubble-index": Math.min(index, 6) } as React.CSSProperties}
           >
             <span className="agent-bubble-dot" />
-            <span className="agent-bubble-label">{label}</span>
+            <span className="agent-bubble-copy">
+              <span className="agent-bubble-workspace">{workspaceLabel}</span>
+              <span className="agent-bubble-agent">{agentLabel}</span>
+            </span>
           </div>
         );
       })}

@@ -325,7 +325,7 @@ async fn set_agent_bubble_layout(
     let scale_factor = list.scale_factor().map_err(|error| error.to_string())?;
     let list_size = tauri::PhysicalSize::new(
         (480.0 * scale_factor).round() as u32,
-        ((visible_rows * 48.0 + 8.0) * scale_factor).round() as u32,
+        ((visible_rows * 62.0 + 8.0) * scale_factor).round() as u32,
     );
     if list.outer_size().ok() != Some(list_size) {
         list.set_size(list_size)

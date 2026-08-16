@@ -178,9 +178,11 @@ export function AgentBubbleListApp() {
             title={`${workspaceLabel} · ${agentLabel}`}
             style={{ "--bubble-index": Math.min(index, 6) } as React.CSSProperties}
           >
-            <span className={`agent-bubble-dot${agent.recentlyCompleted ? " is-completed" : ""}`} />
             <span className="agent-bubble-copy">
-              <span className="agent-bubble-workspace">{workspaceLabel}</span>
+              <span className="agent-bubble-workspace-row">
+                <span className={`agent-bubble-dot${agent.recentlyCompleted ? " is-completed" : ""}`} />
+                <span className="agent-bubble-workspace">{workspaceLabel}</span>
+              </span>
               <span className="agent-bubble-agent">{agentLabel}</span>
             </span>
           </div>

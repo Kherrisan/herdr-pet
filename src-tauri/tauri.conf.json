@@ -46,7 +46,7 @@
         "label": "agent-list",
         "title": "Herdr Pet Agent List",
         "url": "index.html",
-        "width": 480,
+        "width": 380,
         "height": 380,
         "resizable": false,
         "decorations": false,

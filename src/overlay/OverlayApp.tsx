@@ -97,7 +97,6 @@ export function OverlayApp() {
       onDoubleClick={() => void api.openSettings()}
       style={{
         opacity: config.overlay.opacity,
-        transform: `scale(${config.overlay.scale})`,
       }}
     >
       {activeIntent?.bubble && <div className="speech-bubble">{activeIntent.bubble}</div>}

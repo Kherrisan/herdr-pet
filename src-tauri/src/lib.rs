@@ -292,6 +292,20 @@ async fn persist_config_change(
     Ok(config)
 }
 
+/// Keep the native window hit-test area aligned with the rendered pet. A CSS
+/// transform would shrink the pixels while leaving a full-size transparent
+/// webview that blocks clicks on applications underneath it.
+#[cfg(feature = "desktop")]
+fn resize_overlay_for_scale(
+    window: &tauri::WebviewWindow,
+    scale: f64,
+) -> Result<(), String> {
+    let edge = (320.0 * scale.clamp(0.3, 2.0)).round().max(96.0);
+    window
+        .set_size(tauri::LogicalSize::new(edge, edge))
+        .map_err(|error| error.to_string())
+}
+
 #[cfg(feature = "desktop")]
 #[tauri::command]
 async fn update_app_config(
@@ -324,6 +338,10 @@ async fn update_app_config(
     };
     let overlay = app.get_webview_window("pet-overlay");
     if let Some(overlay) = &overlay {
+        if let Err(error) = resize_overlay_for_scale(overlay, config.overlay.scale) {
+            rollback_shortcut();
+            return Err(error);
+        }
         if let Err(error) = overlay.set_always_on_top(config.overlay.always_on_top) {
             rollback_shortcut();
             return Err(error.to_string());
@@ -1227,6 +1245,7 @@ pub fn run() {
                 tracing::warn!(%error, "failed to synchronize autostart setting");
             }
             if let Some(overlay) = app.get_webview_window("pet-overlay") {
+                let _ = resize_overlay_for_scale(&overlay, config.overlay.scale);
                 let _ = overlay.set_always_on_top(config.overlay.always_on_top);
                 let _ = overlay.set_ignore_cursor_events(config.overlay.click_through);
                 if absolute_position_supported()

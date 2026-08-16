@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -60,6 +61,7 @@ pub struct RuntimeState {
     pub config: RwLock<AppConfig>,
     pub config_update: Mutex<()>,
     pub agents: RwLock<AgentCache>,
+    workspace_labels: RwLock<HashMap<String, String>>,
     pub connection: RwLock<ConnectionStatus>,
     pub intents: RwLock<IntentFactory>,
     pub reconnect: Notify,
@@ -92,6 +94,7 @@ impl RuntimeState {
             config: RwLock::new(config),
             config_update: Mutex::new(()),
             agents: RwLock::new(AgentCache::default()),
+            workspace_labels: RwLock::new(HashMap::new()),
             connection: RwLock::new(ConnectionStatus::default()),
             intents: RwLock::new(IntentFactory::default()),
             reconnect: Notify::new(),
@@ -178,6 +181,18 @@ impl RuntimeState {
         self.agents.read().await.list()
     }
 
+    pub async fn replace_workspace_labels(&self, labels: HashMap<String, String>) {
+        *self.workspace_labels.write().await = labels;
+    }
+
+    pub async fn workspace_label(&self, workspace_id: &str) -> Option<String> {
+        self.workspace_labels
+            .read()
+            .await
+            .get(workspace_id)
+            .cloned()
+    }
+
     pub async fn aggregate(&self) -> AggregateState {
         let connected = self.connection.read().await.state == ConnectionState::Connected;
         let quiet = self.config.read().await.herdr.observation.quiet();
@@ -186,5 +201,37 @@ impl RuntimeState {
         } else {
             self.agents.read().await.aggregate(connected)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::RuntimeState;
+    use crate::config::AppConfig;
+
+    #[tokio::test]
+    async fn workspace_labels_are_retained_and_replaced_by_snapshot() {
+        let state = RuntimeState::new(AppConfig::default());
+        state
+            .replace_workspace_labels(HashMap::from([
+                ("w1".into(), "rtx6000: vulseek-dev".into()),
+                ("w2".into(), "libaflnet-dev: fandango".into()),
+            ]))
+            .await;
+        assert_eq!(
+            state.workspace_label("w1").await.as_deref(),
+            Some("rtx6000: vulseek-dev")
+        );
+
+        state
+            .replace_workspace_labels(HashMap::from([("w3".into(), "local: herdr-pet".into())]))
+            .await;
+        assert!(state.workspace_label("w1").await.is_none());
+        assert_eq!(
+            state.workspace_label("w3").await.as_deref(),
+            Some("local: herdr-pet")
+        );
     }
 }

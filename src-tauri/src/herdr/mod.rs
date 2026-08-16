@@ -15,7 +15,6 @@ use tokio::{
 use tracing::{info, warn};
 
 use crate::{
-    agents::AgentInfo,
     pet::PetIntent,
     protocol,
     runtime::{ConnectionState, RuntimeState},
@@ -124,6 +123,7 @@ async fn connect_and_subscribe(
         .into_iter()
         .map(|pane| pane.id)
         .collect::<Vec<_>>();
+    state.replace_workspace_labels(workspace_labels).await;
     {
         state.agents.write().await.replace(agents);
         let mut status = state.connection.write().await;
@@ -193,15 +193,8 @@ async fn connect_and_subscribe(
                     status = ?data.agent_status,
                     "received pane.agent_status_changed"
                 );
-                let agent = AgentInfo {
-                    session_id: endpoint.session_id().to_string(),
-                    workspace_id: data.workspace_id,
-                    workspace_label: None,
-                    pane_id: data.pane_id,
-                    agent: data.display_agent.or(data.agent),
-                    title: data.title,
-                    state: data.agent_status,
-                };
+                let workspace_label = state.workspace_label(&data.workspace_id).await;
+                let agent = data.into_agent_info(endpoint.session_id(), workspace_label);
                 let observation = state.config.read().await.herdr.observation.clone();
                 if !observation.includes(&agent.workspace_id, &agent.pane_id) {
                     state

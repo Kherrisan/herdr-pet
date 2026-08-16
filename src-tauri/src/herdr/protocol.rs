@@ -182,6 +182,24 @@ pub struct AgentStatusData {
     pub title: Option<String>,
 }
 
+impl AgentStatusData {
+    pub fn into_agent_info(
+        self,
+        session_id: &str,
+        workspace_label: Option<String>,
+    ) -> crate::agents::AgentInfo {
+        crate::agents::AgentInfo {
+            session_id: session_id.into(),
+            workspace_id: self.workspace_id,
+            workspace_label,
+            pane_id: self.pane_id,
+            agent: self.display_agent.or(self.agent),
+            title: self.title,
+            state: self.agent_status,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PaneLifecycleData {
     pub pane_id: String,
@@ -234,6 +252,24 @@ mod tests {
         assert_eq!(snapshot.panes[0].id, "w1:p1");
         assert_eq!(snapshot.workspaces[0].label, "host: project");
         assert_eq!(snapshot.agents[0].agent_status, AgentState::Working);
+    }
+
+    #[test]
+    fn status_event_keeps_the_cached_workspace_label() {
+        let event: EventMessage = serde_json::from_str(r#"{
+          "event":"pane.agent_status_changed",
+          "data":{"pane_id":"w1:p2","workspace_id":"w1","agent_status":"working","display_agent":"grok","title":"Waiting for response"}
+        }"#).unwrap();
+        let EventMessage::AgentStatus(status) = event else {
+            panic!("expected an agent status event");
+        };
+        let agent = status.into_agent_info("default", Some("rtx6000: vulseek-dev".into()));
+        assert_eq!(
+            agent.workspace_label.as_deref(),
+            Some("rtx6000: vulseek-dev")
+        );
+        assert_eq!(agent.agent.as_deref(), Some("grok"));
+        assert_eq!(agent.title.as_deref(), Some("Waiting for response"));
     }
 
     #[test]
